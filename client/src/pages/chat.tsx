@@ -148,7 +148,7 @@ export default function ChatPage() {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="flex items-center gap-2 text-muted-foreground">
-              <img src="/adhdpenguin2.jpeg" alt="HR CARE" className="w-5 h-5 rounded-sm object-cover animate-pulse" />
+              <img src="/adhdpenguin2.jpeg" alt="HR Agent Assist" className="w-5 h-5 rounded-sm object-cover animate-pulse" />
           <span className="text-sm">Loading…</span>
         </div>
       </div>
@@ -188,10 +188,10 @@ export default function ChatPage() {
           <div className="flex flex-col items-center justify-center h-full gap-8 max-w-2xl mx-auto text-center">
             <div className="flex flex-col items-center gap-3">
               <div className="w-14 h-14 rounded-xl bg-sidebar-primary/10 flex items-center justify-center">
-                <img src="/adhdpenguin2.jpeg" alt="HR CARE" className="w-7 h-7 rounded-full object-cover" />
+                <img src="/adhdpenguin2.jpeg" alt="HR Agent Assist" className="w-7 h-7 rounded-full object-cover" />
               </div>
               <div>
-                <h2 className="text-lg font-semibold text-foreground">HR CARE</h2>
+                <h2 className="text-lg font-semibold text-foreground">HR Agent Assist</h2>
                 <p className="text-sm text-muted-foreground mt-1 max-w-md">
                   {role === "employee" && "Ask me about your rights, leave, benefits, or how to navigate any HR process."}
                   {role === "manager" && "Ask me about your obligations, team management, compliance, and HR processes."}
@@ -246,7 +246,7 @@ export default function ChatPage() {
           </Button>
         </div>
         <p className="text-center text-xs text-muted-foreground mt-2 max-w-3xl mx-auto">
-          HR CARE provides general guidance. Verify critical matters with your HR department or legal counsel.
+          HR Agent Assist provides general guidance. Verify critical matters with your HR department or legal counsel.
         </p>
       </div>
     </div>

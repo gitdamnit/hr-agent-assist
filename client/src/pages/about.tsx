@@ -72,7 +72,7 @@ export default function AboutPage() {
               Holding an MS in Human Resource Management from Capella University and a suite of professional certifications including SHRM-CP, PHR, TSC, CSP, Project+, and Six Sigma Green Belt, Evan brings both the academic grounding and real-world execution that modern HR demands.
             </p>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              HR CARE is built on the same philosophy Evan applies in his practice: be accurate, be transparent, be the resource you wish you had. The agent is designed to give every employee access to the same quality of HR guidance that top organizations provide to their people leaders.
+              HR Agent Assist is built on the same philosophy Evan applies in his practice: be accurate, be transparent, be the resource you wish you had. The agent is designed to give every employee access to the same quality of HR guidance that top organizations provide to their people leaders.
             </p>
           </div>
         </div>
@@ -119,7 +119,7 @@ export default function AboutPage() {
         <Separator className="mb-6" />
 
         <p className="text-xs text-center text-muted-foreground">
-          HR CARE was designed and built by Evan G. Zellner — bringing enterprise-grade HR intelligence to every employee, manager, and HR team.
+          HR Agent Assist was designed and built by Evan G. Zellner — bringing enterprise-grade HR intelligence to every employee, manager, and HR team.
         </p>
       </div>
     </div>

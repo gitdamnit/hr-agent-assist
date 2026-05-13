@@ -1,4 +1,4 @@
-HR CARE — HR Compliance and Rights Engine
+HR Agent Assist — HR Compliance and Rights Engine
 
 An AI-powered, channel-agnostic HR assistant that delivers cited, accurate, role-aware HR guidance grounded in your company's own documents and employment law.
 
@@ -7,7 +7,7 @@ An AI-powered, channel-agnostic HR assistant that delivers cited, accurate, role
 
 
 What It Does
-HR CARE gives employees, managers, and HR professionals instant access to reliable HR guidance — the kind of detailed, policy-grounded answers that usually require a meeting with HR.
+HR Agent Assist gives employees, managers, and HR professionals instant access to reliable HR guidance — the kind of detailed, policy-grounded answers that usually require a meeting with HR.
 
 
 <img width="713" height="533" alt="image" src="https://github.com/user-attachments/assets/9998c818-4a6f-4e79-9f6d-737ad49172c9" />
@@ -16,7 +16,7 @@ HR CARE gives employees, managers, and HR professionals instant access to reliab
 
 Role-aware responses — tell it whether you're an Employee, Manager, or HR Professional and it adjusts the depth and framing of every answer accordingly
 
-Knowledge base (RAG) — upload your company's policy documents and HR CARE will cite them in every relevant answer
+Knowledge base (RAG) — upload your company's policy documents and HR Agent Assist will cite them in every relevant answer
 
 Streaming AI chat — real-time responses powered by GPT-5.2
 
@@ -26,7 +26,7 @@ Dark & light mode
 
 Built to be channel-agnostic — Slack, Teams, email, and WhatsApp integrations are on the roadmap
 Roles
-Role	What HR CARE focuses on
+Role	What HR Agent Assist focuses on
 Employee	Your rights, entitlements, leave, benefits, how to navigate HR processes
 Manager	Employee rights + your compliance obligations, documentation requirements, legal risks
 HR Professional	Full statutory detail, regulatory citations, edge cases, audit considerations
@@ -156,4 +156,4 @@ technical recruiting, HR business partnering, and talent acquisition strategy.
 <img width="888" height="970" alt="image" src="https://github.com/user-attachments/assets/26be6700-2bdb-4b82-855f-837fd4322a48" />
 
 Disclaimer
-HR CARE provides general guidance only. Always verify critical matters with your HR department or qualified legal counsel.
+HR Agent Assist provides general guidance only. Always verify critical matters with your HR department or qualified legal counsel.

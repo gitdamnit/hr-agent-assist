@@ -1,4 +1,4 @@
--- Initial schema for HR CARE
+-- Initial schema for HR Agent Assist
 -- Generated from shared/schema.ts
 
 CREATE TABLE IF NOT EXISTS "users" (

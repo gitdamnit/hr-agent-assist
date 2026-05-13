@@ -65,11 +65,11 @@ export function AppSidebar() {
         <Link href="/" className="flex items-center gap-2.5 hover:opacity-80 transition-opacity" data-testid="link-home-logo">
           <img
             src="/adhdpenguin2.jpeg"
-            alt="HR CARE"
+            alt="HR Agent Assist"
             className="w-8 h-8 rounded-md object-cover flex-shrink-0"
           />
           <div>
-            <p className="text-sm font-bold text-sidebar-foreground leading-tight tracking-wide">HR CARE</p>
+            <p className="text-sm font-bold text-sidebar-foreground leading-tight tracking-wide">HR Agent Assist</p>
             <p className="text-[10px] text-sidebar-foreground/60 leading-tight">HR Compliance and Rights Engine</p>
             <p className="text-[10px] text-muted-foreground leading-tight mt-0.5">AI-Powered HR Assistant</p>
           </div>

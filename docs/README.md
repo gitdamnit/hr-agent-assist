@@ -1,4 +1,4 @@
-# HR Core Agent
+# HR Agent Assist
 
 An AI-powered, channel-agnostic HR assistant. React frontend, Express backend, PostgreSQL database, OpenAI via AI Integrations.
 
@@ -30,7 +30,7 @@ Every new conversation starts with a role picker (Employee / Manager / HR Profes
 Upload company policy documents → they are parsed, chunked, and indexed in PostgreSQL full-text search. Every message query searches the knowledge base and injects relevant chunks into the AI system prompt with citations.
 
 ### AI Chat (Streaming SSE)
-Full streaming responses using gpt-5.2 with the HR Core Agent system prompt. Role-aware, knowledge-base-aware.
+Full streaming responses using gpt-5.2 with the HR Agent Assist system prompt. Role-aware, knowledge-base-aware.
 
 ### Conversation Management
 All conversations persisted in PostgreSQL, auto-titled, listed in sidebar with delete.

@@ -53,7 +53,7 @@ export function RoleSelector({ onSelect, isLoading }: RoleSelectorProps) {
             Before we begin — who are you?
           </h2>
           <p className="text-sm text-muted-foreground">
-            Your role shapes how HR CARE answers your questions.
+            Your role shapes how HR Agent Assist answers your questions.
           </p>
         </div>
 

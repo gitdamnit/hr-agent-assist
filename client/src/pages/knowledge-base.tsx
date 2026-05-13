@@ -120,7 +120,7 @@ export default function KnowledgeBasePage() {
             <h1 className="text-xl font-bold text-foreground" data-testid="text-kb-title">Knowledge Base</h1>
           </div>
           <p className="text-sm text-muted-foreground">
-            Upload your company policy documents — PDFs, Word docs, ODTs, Markdown files and more. HR CARE will search them on every question and cite them in answers.
+            Upload your company policy documents — PDFs, Word docs, ODTs, Markdown files and more. HR Agent Assist will search them on every question and cite them in answers.
           </p>
         </div>
 
@@ -232,7 +232,7 @@ export default function KnowledgeBasePage() {
               <AlertCircle className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
               <p className="text-sm font-medium text-foreground mb-1">Knowledge base is empty</p>
               <p className="text-xs text-muted-foreground">
-                Upload your first document above. HR CARE will search it on every question.
+                Upload your first document above. HR Agent Assist will search it on every question.
               </p>
             </div>
           )}

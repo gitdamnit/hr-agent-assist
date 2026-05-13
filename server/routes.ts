@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { extractTextFromFile, chunkText } from "./docParser";
 import { getAIProvider } from "./ai/registry";
+import { requireApiKey } from "./auth";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
@@ -34,7 +35,7 @@ function buildSystemPrompt(role?: string, knowledgeContext?: string, modelInfo?:
     ? `\n\nCOMPANY KNOWLEDGE BASE (retrieved relevant excerpts — treat as authoritative company policy):\n${knowledgeContext}`
     : `\n\nNOTE: No company documents have been uploaded to the knowledge base yet. You are providing general guidance based on common HR practices and applicable law. Always recommend the employee verify with their actual HR department for binding policy.`;
 
-  return `You are "HR Core Agent", a channel-agnostic HR assistant designed to serve employees and HR staff. The source of truth is: (1) company documents and policies, and (2) authoritative government sources for legal baselines. You must always prioritize accuracy, citations, and safe escalation over confident nonsense.${modelLine}
+  return `You are "HR Agent Assist", a channel-agnostic HR assistant designed to serve employees and HR staff. The source of truth is: (1) company documents and policies, and (2) authoritative government sources for legal baselines. You must always prioritize accuracy, citations, and safe escalation over confident nonsense.${modelLine}
 ${roleSection}
 PRIMARY OBJECTIVES
 1) Answer HR questions grounded in company docs (when available), with source citations.
@@ -234,6 +235,126 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       });
     } catch (e) {
       res.status(500).json({ error: "Failed to list models" });
+    }
+  });
+
+  // ── OpenAI-Compatible Chat Completions ────────────────────────────────────
+
+  app.post("/api/chat/completions", requireApiKey, async (req, res) => {
+    try {
+      const { messages, model, stream = false, max_tokens, role } = req.body;
+
+      if (!messages || !Array.isArray(messages)) {
+        return res.status(400).json({ error: "messages array is required" });
+      }
+
+      const provider = getAIProvider();
+      const modelInfo = `${provider.providerName} / ${provider.defaultModel}`;
+
+      // Extract user's last message for RAG
+      const userMessages = messages.filter((m: any) => m.role === "user");
+      const lastUserMessage = userMessages[userMessages.length - 1]?.content || "";
+
+      // RAG: search knowledge base for relevant chunks
+      let knowledgeContext: string | undefined;
+      try {
+        const chunks = await storage.searchChunks(lastUserMessage.trim(), 5);
+        if (chunks.length > 0) {
+          knowledgeContext = chunks
+            .map((c, i) => `[${i + 1}] From "${c.documentTitle}":\n${c.content}`)
+            .join("\n\n---\n\n");
+        }
+      } catch (_) {}
+
+      // Inject system prompt if no system message provided
+      const systemPrompt = buildSystemPrompt(role, knowledgeContext, modelInfo);
+      const hasSystemMessage = messages.some((m: any) => m.role === "system");
+      const chatMessages = hasSystemMessage
+        ? messages
+        : [{ role: "system" as const, content: systemPrompt }, ...messages];
+
+      if (stream) {
+        // SSE streaming
+        res.setHeader("Content-Type", "text/event-stream");
+        res.setHeader("Cache-Control", "no-cache");
+        res.setHeader("Connection", "keep-alive");
+
+        const stream = provider.chat(chatMessages, {
+          model: model || undefined,
+          maxTokens: max_tokens || undefined,
+        });
+
+        const id = `chatcmpl-${Date.now()}`;
+        const created = Math.floor(Date.now() / 1000);
+
+        res.write(
+          `data: ${JSON.stringify({
+            id,
+            object: "chat.completion.chunk",
+            created,
+            model: provider.defaultModel,
+            choices: [{ index: 0, delta: { role: "assistant" }, finish_reason: null }],
+          })}\n\n`,
+        );
+
+        let fullResponse = "";
+        for await (const delta of stream) {
+          fullResponse += delta;
+          res.write(
+            `data: ${JSON.stringify({
+              id,
+              object: "chat.completion.chunk",
+              created,
+              model: provider.defaultModel,
+              choices: [{ index: 0, delta: { content: delta }, finish_reason: null }],
+            })}\n\n`,
+          );
+        }
+
+        res.write(
+          `data: ${JSON.stringify({
+            id,
+            object: "chat.completion.chunk",
+            created,
+            model: provider.defaultModel,
+            choices: [{ index: 0, delta: {}, finish_reason: "stop" }],
+          })}\n\n`,
+        );
+
+        res.write("data: [DONE]\n\n");
+        res.end();
+      } else {
+        // Non-streaming response
+        let fullResponse = "";
+        for await (const delta of provider.chat(chatMessages, {
+          model: model || undefined,
+          maxTokens: max_tokens || undefined,
+        })) {
+          fullResponse += delta;
+        }
+
+        res.json({
+          id: `chatcmpl-${Date.now()}`,
+          object: "chat.completion",
+          created: Math.floor(Date.now() / 1000),
+          model: provider.defaultModel,
+          choices: [
+            {
+              index: 0,
+              message: { role: "assistant", content: fullResponse },
+              finish_reason: "stop",
+            },
+          ],
+          usage: {
+            prompt_tokens: 0,
+            completion_tokens: 0,
+            total_tokens: 0,
+          },
+        });
+      }
+    } catch (err) {
+      console.error("Error in chat completions:", err);
+      res.status(500).json({ error: "Failed to get AI response" });
     }
   });
 

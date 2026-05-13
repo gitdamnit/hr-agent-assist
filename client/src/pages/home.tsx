@@ -48,11 +48,11 @@ export default function HomePage() {
       <div className="max-w-2xl mx-auto px-6 py-16 flex flex-col items-center text-center">
         {/* Hero */}
         <div className="w-16 h-16 rounded-2xl overflow-hidden mb-6">
-          <img src="/adhdpenguin2.jpeg" alt="HR CARE" className="w-full h-full object-cover" />
+          <img src="/adhdpenguin2.jpeg" alt="HR Agent Assist" className="w-full h-full object-cover" />
         </div>
 
         <h1 className="text-3xl font-bold text-foreground mb-1" data-testid="text-home-title">
-          HR CARE
+          HR Agent Assist
         </h1>
         <p className="text-xs text-muted-foreground mb-3">HR Compliance and Rights Engine</p>
         <p className="text-muted-foreground text-base leading-relaxed mb-8 max-w-lg">
