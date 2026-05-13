@@ -1,4 +1,4 @@
-import { Bot, User, AlertTriangle, ExternalLink, ChevronRight } from "lucide-react";
+import { User, AlertTriangle, ExternalLink, ChevronRight } from "lucide-react";
 import type { Message } from "@shared/schema";
 import { cn } from "@/lib/utils";
 
@@ -131,7 +131,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
           ? "bg-primary text-primary-foreground"
           : "bg-sidebar-primary text-sidebar-primary-foreground"
       )}>
-        {isUser ? <User className="w-3.5 h-3.5" /> : <Bot className="w-3.5 h-3.5" />}
+        {isUser ? <User className="w-3.5 h-3.5" /> : <img src="/adhdpenguin2.jpeg" alt="" className="w-3.5 h-3.5 rounded-full object-cover" />}
       </div>
 
       <div className={cn("flex flex-col gap-1.5 max-w-[85%]", isUser ? "items-end" : "items-start")}>
@@ -165,7 +165,7 @@ export function StreamingMessage({ content }: { content: string }) {
   return (
     <div className="flex gap-3 max-w-3xl mr-auto">
       <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 bg-sidebar-primary text-sidebar-primary-foreground">
-        <Bot className="w-3.5 h-3.5" />
+        <img src="/adhdpenguin2.jpeg" alt="" className="w-3.5 h-3.5 rounded-full object-cover" />
       </div>
       <div className="flex flex-col gap-1.5 max-w-[85%] items-start">
         <div className="bg-card border border-card-border rounded-lg px-4 py-3">

@@ -1,7 +1,7 @@
 import { useParams } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Send, Bot, Sparkles, FileText, Scale, HelpCircle } from "lucide-react";
+import { Send, Sparkles, FileText, Scale, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { MessageBubble, StreamingMessage } from "@/components/message-bubble";
@@ -148,7 +148,7 @@ export default function ChatPage() {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="flex items-center gap-2 text-muted-foreground">
-          <Bot className="w-5 h-5 animate-pulse" />
+              <img src="/adhdpenguin2.jpeg" alt="HR CARE" className="w-5 h-5 rounded-sm object-cover animate-pulse" />
           <span className="text-sm">Loading…</span>
         </div>
       </div>
@@ -188,7 +188,7 @@ export default function ChatPage() {
           <div className="flex flex-col items-center justify-center h-full gap-8 max-w-2xl mx-auto text-center">
             <div className="flex flex-col items-center gap-3">
               <div className="w-14 h-14 rounded-xl bg-sidebar-primary/10 flex items-center justify-center">
-                <Bot className="w-7 h-7 text-sidebar-primary" />
+                <img src="/adhdpenguin2.jpeg" alt="HR CARE" className="w-7 h-7 rounded-full object-cover" />
               </div>
               <div>
                 <h2 className="text-lg font-semibold text-foreground">HR CARE</h2>

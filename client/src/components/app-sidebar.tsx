@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { MessageSquare, Plus, Trash2, Info, Bot, BookOpen } from "lucide-react";
+import { MessageSquare, Plus, Trash2, Info, BookOpen } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -63,9 +63,11 @@ export function AppSidebar() {
     <Sidebar>
       <SidebarHeader className="p-4 border-b border-sidebar-border">
         <Link href="/" className="flex items-center gap-2.5 hover:opacity-80 transition-opacity" data-testid="link-home-logo">
-          <div className="w-8 h-8 rounded-md bg-sidebar-primary flex items-center justify-center flex-shrink-0">
-            <Bot className="w-4 h-4 text-sidebar-primary-foreground" />
-          </div>
+          <img
+            src="/adhdpenguin2.jpeg"
+            alt="HR CARE"
+            className="w-8 h-8 rounded-md object-cover flex-shrink-0"
+          />
           <div>
             <p className="text-sm font-bold text-sidebar-foreground leading-tight tracking-wide">HR CARE</p>
             <p className="text-[10px] text-sidebar-foreground/60 leading-tight">HR Compliance and Rights Engine</p>

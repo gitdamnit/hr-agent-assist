@@ -1,4 +1,4 @@
-import { Bot, FileText, Scale, Shield, Zap, MessageSquare, Plus } from "lucide-react";
+import { FileText, Scale, Shield, Zap, MessageSquare, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -47,8 +47,8 @@ export default function HomePage() {
     <div className="h-full overflow-y-auto">
       <div className="max-w-2xl mx-auto px-6 py-16 flex flex-col items-center text-center">
         {/* Hero */}
-        <div className="w-16 h-16 rounded-2xl bg-sidebar-primary/10 flex items-center justify-center mb-6">
-          <Bot className="w-8 h-8 text-sidebar-primary" />
+        <div className="w-16 h-16 rounded-2xl overflow-hidden mb-6">
+          <img src="/adhdpenguin2.jpeg" alt="HR CARE" className="w-full h-full object-cover" />
         </div>
 
         <h1 className="text-3xl font-bold text-foreground mb-1" data-testid="text-home-title">
