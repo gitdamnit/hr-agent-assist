@@ -32,6 +32,8 @@ export const messages = pgTable("messages", {
     nextSteps?: string[];
     intentType?: string;
     riskLevel?: "low" | "medium" | "high";
+    model?: string;
+    provider?: string;
   }>().default({}),
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
 });

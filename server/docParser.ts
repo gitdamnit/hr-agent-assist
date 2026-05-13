@@ -6,10 +6,12 @@ export async function extractTextFromFile(filePath: string, mimetype: string, or
 
   // PDF
   if (mimetype === "application/pdf" || ext === ".pdf") {
-    const pdfParse = (await import("pdf-parse")).default;
+    const { PDFParse } = await import("pdf-parse");
     const buffer = fs.readFileSync(filePath);
-    const data = await pdfParse(buffer);
-    return data.text;
+    const parser = new PDFParse(buffer);
+    const result = await parser.getText();
+    parser.destroy();
+    return typeof result === "string" ? result : result.toString();
   }
 
   // DOCX
