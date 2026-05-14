@@ -1,5 +1,7 @@
 # HR Agent Assist
 
+<img width="200" height="200" alt="HR Agent Assist logo" src="hragentassistlogo.jpeg" />
+
 An AI-powered, channel-agnostic HR assistant that delivers cited, accurate, role-aware HR guidance grounded in your company's own documents and employment law.
 
 <img width="706" height="541" alt="HR Agent Assist" src="https://github.com/user-attachments/assets/b6e4e645-1d2b-4369-92c5-91d00c38fae5" />
