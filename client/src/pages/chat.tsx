@@ -137,11 +137,23 @@ export default function ChatPage() {
     }
   }, [conversationId, isSending, qc, toast]);
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) {
+  // ── Message History Navigation ─────────────────────────────────────────────
+  const [historyIndex, setHistoryIndex] = useState(-1);
+  const [sentMessages, setSentMessages] = useState<string[]>([]);
+
+const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey && !e.metaKey && !e.ctrlKey) {
       e.preventDefault();
-      sendMessage(input);
+      handleSend(input);
     }
+  };
+
+  const handleSend = (text: string) => {
+    if (text.trim()) {
+      setSentMessages((prev) => [...prev.slice(-49), text.trim()]);
+      setHistoryIndex(-1);
+    }
+    sendMessage(text);
   };
 
   if (isLoading) {
@@ -204,7 +216,7 @@ export default function ChatPage() {
               {suggestions.map((q) => (
                 <button
                   key={q.label}
-                  onClick={() => sendMessage(q.label)}
+                  onClick={() => handleSend(q.label)}
                   className="flex items-start gap-3 text-left p-3.5 rounded-lg border border-border bg-card hover-elevate"
                   data-testid={`button-suggestion-${q.label.slice(0, 10).replace(/\s/g, "-")}`}
                 >
@@ -238,7 +250,7 @@ export default function ChatPage() {
           </div>
           <Button
             size="icon"
-            onClick={() => sendMessage(input)}
+            onClick={() => handleSend(input)}
             disabled={!input.trim() || isSending}
             data-testid="button-send"
           >

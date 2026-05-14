@@ -79,6 +79,7 @@ function createTestApp(mockStorage: ReturnType<typeof makeMockStorage>, withSess
     if (existing) return res.status(409).json({ error: "Username already taken" });
     const hashed = crypto.createHash("sha256").update(password).digest("hex");
     const user = await mockStorage.createUser({ username, password: hashed });
+    (req.session as any).userId = user.id;
     res.status(201).json({ id: user.id, username: user.username });
   });
 
@@ -89,14 +90,14 @@ function createTestApp(mockStorage: ReturnType<typeof makeMockStorage>, withSess
     if (!user) return res.status(401).json({ error: "Invalid credentials" });
     const hashed = crypto.createHash("sha256").update(password).digest("hex");
     if (user.password !== hashed) return res.status(401).json({ error: "Invalid credentials" });
+    (req.session as any).userId = user.id;
     res.json({ id: user.id, username: user.username });
   });
 
   app.get("/api/auth/me", async (req, res) => {
-    const authHeader = req.headers.authorization;
-    if (!authHeader?.startsWith("Bearer ")) return res.status(401).json({ error: "Not authenticated" });
-    const token = authHeader.slice(7);
-    const user = mockUsers.find((u) => u.id === token);
+    const userId = (req.session as any)?.userId;
+    if (!userId) return res.status(401).json({ error: "Not authenticated" });
+    const user = mockUsers.find((u) => u.id === userId);
     if (!user) return res.status(404).json({ error: "User not found" });
     res.json({ id: user.id, username: user.username });
   });
@@ -235,9 +236,13 @@ describe("Auth Routes", () => {
       expect(res.status).toBe(401);
     });
 
-    it("returns 404 for unknown user id", async () => {
-      const res = await request.get("/api/auth/me").set("Authorization", "Bearer unknown-user-id");
-      expect(res.status).toBe(404);
+    it("returns user when session is set via cookie", async () => {
+      // Use agent to persist cookies across requests
+      const agent = supertest.agent(server);
+      await agent.post("/api/auth/register").send({ username: "cookieuser", password: "password123" });
+      const res = await agent.get("/api/auth/me");
+      expect(res.status).toBe(200);
+      expect(res.body.username).toBe("cookieuser");
     });
   });
 });
