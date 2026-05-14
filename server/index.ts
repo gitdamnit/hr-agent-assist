@@ -3,6 +3,7 @@ import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 import rateLimit from "express-rate-limit";
+import { buildSessionMiddleware, addUserToRequest } from "./session";
 
 const app = express();
 const httpServer = createServer(app);
@@ -12,6 +13,11 @@ declare module "http" {
     rawBody: unknown;
   }
 }
+
+// ── Session (must be first) ──────────────────────────────────────────────────
+
+app.use(buildSessionMiddleware());
+app.use(addUserToRequest);
 
 // ── CORS ─────────────────────────────────────────────────────────────────────
 
@@ -67,6 +73,8 @@ app.use(
 
 app.use(express.urlencoded({ extended: false }));
 
+// ── Request Logging ──────────────────────────────────────────────────────────
+
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
     hour: "numeric",
@@ -103,6 +111,8 @@ app.use((req, res, next) => {
 
   next();
 });
+
+// ── Register Routes ──────────────────────────────────────────────────────────
 
 (async () => {
   await registerRoutes(httpServer, app);

@@ -24,3 +24,22 @@ export function requireApiKey(req: Request, res: Response, next: NextFunction) {
 export function hasAuthConfigured(): boolean {
   return !!API_KEY;
 }
+
+export function requireSession(req: Request, res: Response, next: NextFunction) {
+  if (!req.session || !req.session.userId) {
+    res.status(401).json({ error: "Authentication required" });
+    return;
+  }
+  next();
+}
+
+export interface SessionUser {
+  id: string;
+  username: string;
+}
+
+declare module "express" {
+  interface Request {
+    user?: SessionUser;
+  }
+}
