@@ -43,3 +43,15 @@ CREATE TABLE IF NOT EXISTS "document_chunks" (
 );
 
 CREATE INDEX IF NOT EXISTS "document_chunks_document_id_idx" ON "document_chunks" ("document_id");
+
+-- Full-text search index for RAG chunk retrieval
+CREATE INDEX IF NOT EXISTS "document_chunks_content_fts_idx" ON "document_chunks"
+  USING GIN (to_tsvector('english', "content"));
+
+-- Session table (created at runtime by connect-pg-simple, but listed here for documentation)
+-- CREATE TABLE IF NOT EXISTS "session" (
+--   "sid" varchar NOT NULL COLLATE "default" PRIMARY KEY,
+--   "sess" json NOT NULL,
+--   "expire" timestamp(6) NOT NULL
+-- );
+-- CREATE INDEX IF NOT EXISTS "IDX_session_expire" ON "session" ("expire");

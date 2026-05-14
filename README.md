@@ -1,159 +1,195 @@
-HR Agent Assist — HR Compliance and Rights Engine
+# HR Agent Assist
 
 An AI-powered, channel-agnostic HR assistant that delivers cited, accurate, role-aware HR guidance grounded in your company's own documents and employment law.
 
+<img width="706" height="541" alt="HR Agent Assist" src="https://github.com/user-attachments/assets/b6e4e645-1d2b-4369-92c5-91d00c38fae5" />
 
-<img width="706" height="541" alt="image" src="https://github.com/user-attachments/assets/b6e4e645-1d2b-4369-92c5-91d00c38fae5" />
+## Features
 
+**Role-aware responses** — tell it whether you're an Employee, Manager, or HR Professional and it adjusts the depth and framing of every answer accordingly.
 
-What It Does
-HR Agent Assist gives employees, managers, and HR professionals instant access to reliable HR guidance — the kind of detailed, policy-grounded answers that usually require a meeting with HR.
+**Knowledge base (RAG)** — upload your company's policy documents (PDF, DOCX, ODT, TXT, MD, HTML, CSV) and HR Agent Assist will cite them in every relevant answer.
 
+**Streaming AI chat** — real-time responses with full conversation history, searchable across all sessions.
 
-<img width="713" height="533" alt="image" src="https://github.com/user-attachments/assets/9998c818-4a6f-4e79-9f6d-737ad49172c9" />
+**Three-brains architecture** — Company Policy Brain (RAG), Legal Baseline Brain (government sources), and Tools Brain (actions with audit logging).
 
+**Intent routing** — automatically classifies each question as Policy Q, Legal Baseline Q, Action Request, Personal Case, or Unknown.
 
+**Three-tier memory** — session memory, case memory (persistent per case), and organizational memory (admin-curated).
 
-Role-aware responses — tell it whether you're an Employee, Manager, or HR Professional and it adjusts the depth and framing of every answer accordingly
+**Dark & light mode** — theme follows system preference, manually toggleable.
 
-Knowledge base (RAG) — upload your company's policy documents and HR Agent Assist will cite them in every relevant answer
+**Session-based auth** — register/login with username + password, PostgreSQL-backed sessions.
 
-Streaming AI chat — real-time responses powered by GPT-5.2
+**OpenAI-compatible API** — `POST /api/chat/completions` for external integrations (Slack, Teams, email).
 
-Full conversation history — every conversation is saved and searchable
+**Keyboard shortcuts** — `Ctrl+Enter` to send, `↑`/`↓` to navigate sent message history.
 
-Dark & light mode
+---
 
-Built to be channel-agnostic — Slack, Teams, email, and WhatsApp integrations are on the roadmap
-Roles
-Role	What HR Agent Assist focuses on
-Employee	Your rights, entitlements, leave, benefits, how to navigate HR processes
-Manager	Employee rights + your compliance obligations, documentation requirements, legal risks
-HR Professional	Full statutory detail, regulatory citations, edge cases, audit considerations
+## Tech Stack
 
-Knowledge Base
-Upload any combination of:
+| Layer | Technology |
+|-------|------------|
+| Frontend | React, Tailwind CSS, Shadcn UI, Wouter, TanStack Query |
+| Backend | Node.js, Express 5 |
+| Database | PostgreSQL (via Drizzle ORM) |
+| AI | OpenAI-compatible provider (configurable, defaults to OpenCode Go) |
+| Document parsing | pdf-parse, Mammoth, JSZip |
+| Search | PostgreSQL full-text search (ts_rank) |
+| Streaming | Server-Sent Events (SSE) |
+| Auth | express-session (PG store in production, memory in dev) |
 
-*** PDF — handbooks, policy documents, offer letter templates *** UNABLE TO PARSE PDFs ** NEED TO FIX
+---
 
-DOCX / DOC — Word documents
-ODT — OpenDocument format
-TXT, Markdown, HTML, CSV — plain files
-Documents are parsed, chunked, and indexed. Every question searches the knowledge base and injects the most relevant excerpts into the AI's context. Answers cite the document by name.
+## Getting Started
 
-<img width="707" height="540" alt="image" src="https://github.com/user-attachments/assets/0b8bd494-54aa-442c-91da-7f5603a52267" />
+### Prerequisites
 
+- Node.js 18+
+- PostgreSQL database
+- LLM API key (OpenCode Go, OpenAI, OpenRouter, Groq, or custom)
 
-<img width="705" height="541" alt="image" src="https://github.com/user-attachments/assets/881b65c4-5a37-43b3-8a1e-cd3c36080bab" />
+### Install & run
 
-Tech Stack
-Layer	Technology
-
-Frontend	React, Tailwind CSS, Shadcn UI
-
-Routing	Wouter
-
-Data fetching	TanStack Query
-
-Backend	Node.js, Express
-
-Database	PostgreSQL (via Drizzle ORM)
-
-AI	OpenAI GPT-5.2 (Replit AI Integrations)
-
-Document parsing	pdf-parse, Mammoth, JSZip
-
-Search	PostgreSQL full-text search
-
-Streaming	Server-Sent Events (SSE)
-
-Getting Started
-
-Prerequisites
-
-Node.js 18+
-
-PostgreSQL database
-
-OpenAI API key (or Replit AI Integrations)
-
-Install & run
+```bash
 npm install
 npm run db:push
+cp .env.example .env   # then fill in your DATABASE_URL and LLM_* vars
 npm run dev
-The app runs on http://localhost:5000 by default.
+```
 
-##Manager inquires... 
-<img width="851" height="1034" alt="image" src="https://github.com/user-attachments/assets/c83e6bd4-ed03-486a-9213-1c984aa2c9b2" />
+The app runs on `http://localhost:5000` by default.
 
-Environment variables
+---
 
-Variable	Description
+## Environment Variables
 
-DATABASE_URL	PostgreSQL connection string
+```env
+# Database
+DATABASE_URL=postgresql://user:password@localhost:5432/hr_care
 
-AI_INTEGRATIONS_OPENAI_API_KEY	OpenAI API key
+# LLM Provider (swappable — opencode_go | openai | openrouter | groq | custom)
+LLM_PROVIDER=opencode_go
+LLM_API_KEY=your_api_key
+LLM_BASE_URL=https://opencode.ai/zen/go/v1
+LLM_MODEL=deepseek-v4-pro
+LLM_MODEL_FALLBACKS=deepseek-v4-flash,qwen3.5-plus
+LLM_TIMEOUT_MS=30000
+LLM_MAX_TOKENS=4096
 
-AI_INTEGRATIONS_OPENAI_BASE_URL	OpenAI base URL
+# Auth (optional — only enforced when API_KEY is set)
+API_KEY=
 
-SESSION_SECRET	Session signing secret
+# Session
+SESSION_SECRET=change-me-in-production
 
-API Reference
+# CORS (comma-separated origins)
+CORS_ORIGINS=http://localhost:5000,http://localhost:5173
+```
 
-Method	Endpoint	Description
+---
 
-GET	/api/conversations	List all conversations
+## API Reference
 
-POST	/api/conversations	Create a new conversation
+### Auth
 
-GET	/api/conversations/:id	Get a conversation with messages
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/auth/register` | Register (username + password, SHA-256 hashed) |
+| POST | `/api/auth/login` | Login, sets session cookie |
+| POST | `/api/auth/logout` | Destroys session |
+| GET | `/api/auth/me` | Returns current user (requires session) |
 
-PATCH	/api/conversations/:id	Update title or session data
+### Conversations
 
-DELETE	/api/conversations/:id	Delete a conversation
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/conversations` | List all conversations (requires auth) |
+| POST | `/api/conversations` | Create new conversation |
+| GET | `/api/conversations/:id` | Get conversation with messages |
+| PATCH | `/api/conversations/:id` | Update title or session data |
+| DELETE | `/api/conversations/:id` | Delete conversation |
+| POST | `/api/conversations/:id/messages` | Send message (SSE streaming) |
 
-POST	/api/conversations/:id/messages	Send a message (SSE streaming)
+### Documents
 
-GET	/api/documents	List knowledge base documents
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/documents` | List knowledge base documents |
+| POST | `/api/documents/upload` | Upload documents (multipart, up to 20 files) |
+| DELETE | `/api/documents/:id` | Delete document |
 
-POST	/api/documents/upload	Upload a document
+### AI
 
-DELETE	/api/documents/:id	Delete a document
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/health` | Health check with provider/model info |
+| GET | `/api/models` | List available models |
+| POST | `/api/chat/completions` | OpenAI-compatible completions endpoint (requires `API_KEY`) |
 
-##Employee inquires... 
-<img width="751" height="961" alt="image" src="https://github.com/user-attachments/assets/10957f8a-45aa-4d54-8fd8-a08a0d2abe33" />
+---
 
-Roadmap
-Slack — bot integration via Bolt SDK, slash commands, DMs
+## Project Structure
 
-Email — inbound parsing and reply via SendGrid / Postmark
+```
+hr-care-agent/
+├── client/                  # React frontend
+│   └── src/
+│       ├── components/     # UI components (sidebar, role-selector, etc.)
+│       ├── hooks/          # use-auth (auth context + hydration)
+│       ├── lib/            # queryClient, utils
+│       └── pages/          # home, chat, about, knowledge-base, login, register
+├── server/
+│   ├── ai/
+│   │   ├── provider.ts     # AI provider interface
+│   │   ├── openai-compatible.ts  # OpenAI-compatible streaming provider
+│   │   └── registry.ts     # Env-driven provider config
+│   ├── auth.ts             # requireApiKey, requireSession middleware
+│   ├── session.ts          # Session middleware (PG + memory stores)
+│   ├── routes.ts           # All API routes
+│   ├── storage.ts          # Drizzle storage layer
+│   └── docParser.ts        # PDF/DOCX/ODT/TXT/MD/HTML/CSV parser
+├── shared/
+│   └── schema.ts           # Drizzle schema (users, conversations, messages, documents, documentChunks)
+└── migrations/
+    └── 0000_initial_schema.sql
+```
 
-Telegram — bot API
+---
 
-Microsoft Teams — Azure Bot Framework
+## Roles
 
-WhatsApp — Meta Cloud API
+| Role | What it focuses on |
+|------|---------------------|
+| Employee | Your rights, entitlements, leave, benefits, how to navigate HR processes |
+| Manager | Employee rights + your compliance obligations, documentation requirements, legal risks |
+| HR Professional | Full statutory detail, regulatory citations, edge cases, audit considerations |
 
-Embeddable widget — iframe / script tag for existing HR portals
+---
 
-Admin panel — configure jurisdictions, escalation contacts, document access controls
+## Roadmap
 
-Conversation export — PDF and Markdown
+- [ ] Slack — bot integration via Bolt SDK, slash commands, DMs
+- [ ] Email — inbound parsing and reply via SendGrid / Postmark
+- [ ] Telegram — bot API
+- [ ] Microsoft Teams — Azure Bot Framework
+- [ ] WhatsApp — Meta Cloud API
+- [ ] Embeddable widget — iframe / script tag for existing HR portals
+- [ ] Admin panel — configure jurisdictions, escalation contacts, document access controls
+- [ ] Conversation export — PDF and Markdown
+- [ ] Audit log viewer — for HR staff
+- [ ] Multi-tenant support — separate knowledge bases per organization
 
-Audit log viewer — for HR staff
+---
 
-Multi-tenant support — separate knowledge bases per organization
+## About the Creator
 
-About the Creator
+Built by **Evan G. Zellner**, MSHRM, PHR, SHRM-CP — a strategic HR professional and full-cycle recruiter with 6+ years of experience across technical recruiting, HR business partnering, and talent acquisition strategy.
 
-Built by Evan G. Zellner, MSHRM, PHR, SHRM-CP — a strategic HR professional and full-cycle recruiter with 6+ years of experience across 
-technical recruiting, HR business partnering, and talent acquisition strategy.
+[LinkedIn](https://linkedin.com/in/evanzellner)
 
-#Finally, HR inquires...
-<img width="851" height="1362" alt="image" src="https://github.com/user-attachments/assets/df02110c-4200-49e7-812a-1f6623c32c52" />
+---
 
-## :)
-<img width="888" height="970" alt="image" src="https://github.com/user-attachments/assets/26be6700-2bdb-4b82-855f-837fd4322a48" />
-
-Disclaimer
-HR Agent Assist provides general guidance only. Always verify critical matters with your HR department or qualified legal counsel.
+*HR Agent Assist provides general guidance only. Always verify critical matters with your HR department or qualified legal counsel.*

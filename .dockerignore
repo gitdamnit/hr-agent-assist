@@ -1,0 +1,16 @@
+node_modules
+dist
+client/dist
+client/node_modules
+.git
+*.env
+.env.*
+!.env.example
+!.env.production
+client/src
+client/public
+*.log
+.DS_Store
+coverage
+.vite
+.vscode
