@@ -7,8 +7,6 @@ client/node_modules
 .env.*
 !.env.example
 !.env.production
-client/src
-client/public
 *.log
 .DS_Store
 coverage
