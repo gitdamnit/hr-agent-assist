@@ -3,6 +3,7 @@ import express from "express";
 import { createServer, type Server } from "http";
 import supertest from "supertest";
 import crypto from "crypto";
+import session from "express-session";
 
 // ── Mock Storage ─────────────────────────────────────────────────────────────
 
@@ -61,8 +62,11 @@ function makeMockStorage() {
 
 // ── Test App Setup ────────────────────────────────────────────────────────────
 
-function createTestApp(mockStorage: ReturnType<typeof makeMockStorage>) {
+function createTestApp(mockStorage: ReturnType<typeof makeMockStorage>, withSession = false) {
   const app = express();
+  if (withSession) {
+    app.use(session({ secret: "test-secret", resave: false, saveUninitialized: false }));
+  }
   app.use(express.json());
 
   // Auth endpoints
@@ -150,7 +154,7 @@ describe("Auth Routes", () => {
     mockMessages.length = 0;
 
     const mockStorage = makeMockStorage();
-    app = createTestApp(mockStorage);
+    app = createTestApp(mockStorage, true);
     server = createServer(app);
     request = supertest(server);
   });
@@ -248,7 +252,7 @@ describe("Conversation Routes", () => {
   beforeAll(async () => {
     mockConversations.length = 0;
     const mockStorage = makeMockStorage();
-    app = createTestApp(mockStorage);
+    app = createTestApp(mockStorage, true);
     server = createServer(app);
     request = supertest(server);
   });
@@ -312,7 +316,7 @@ describe("RAG Pipeline", () => {
 
   beforeAll(async () => {
     const mockStorage = makeMockStorage();
-    app = createTestApp(mockStorage);
+    app = createTestApp(mockStorage, true);
     server = createServer(app);
     request = supertest(server);
   });
@@ -348,7 +352,7 @@ describe("Health & Documents", () => {
 
   beforeAll(async () => {
     const mockStorage = makeMockStorage();
-    app = createTestApp(mockStorage);
+    app = createTestApp(mockStorage, true);
     server = createServer(app);
     request = supertest(server);
   });

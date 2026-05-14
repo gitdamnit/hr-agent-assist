@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { MessageSquare, Plus, Trash2, Info, BookOpen } from "lucide-react";
+import { MessageSquare, Plus, Trash2, Info, BookOpen, LogOut } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -58,6 +58,15 @@ export function AppSidebar() {
 
   const activeId = location.startsWith("/chat/") ? parseInt(location.split("/")[2]) : null;
   const docCount = documents?.length ?? 0;
+
+  const logoutMutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest("POST", "/api/auth/logout");
+    },
+    onSuccess: () => {
+      window.location.href = "/login";
+    },
+  });
 
   return (
     <Sidebar>
@@ -160,6 +169,16 @@ export function AppSidebar() {
                 <Info className="w-4 h-4" />
                 <span>About the Creator</span>
               </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              onClick={() => logoutMutation.mutate()}
+              disabled={logoutMutation.isPending}
+              data-testid="button-logout"
+            >
+              <LogOut className="w-4 h-4" />
+              <span>Sign out</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
