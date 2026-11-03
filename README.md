@@ -136,7 +136,7 @@ CORS_ORIGINS=http://localhost:5000,http://localhost:5173
 ## Project Structure
 
 ```
-hr-care-agent/
+hr-agent-assist/
 ├── client/                  # React frontend
 │   └── src/
 │       ├── components/     # UI components (sidebar, role-selector, etc.)
