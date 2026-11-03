@@ -186,6 +186,26 @@ hr-agent-assist/
 
 ---
 
+## Docker
+
+Build and run the container:
+
+```bash
+docker build -t hr-agent-assist .
+docker run -p 5000:5000 --env-file .env hr-agent-assist
+```
+
+Or use Docker Compose, which also starts PostgreSQL and applies `migrations/` on first boot:
+
+```bash
+cp .env.example .env   # set DATABASE_URL, LLM_API_KEY and SESSION_SECRET
+docker compose up --build
+```
+
+The app listens on port 5000 and exposes a health check at `GET /api/health`.
+
+---
+
 ## About the Creator
 
 Built by **Evan G. Zellner**, MSHRM, PHR, SHRM-CP — a strategic HR professional and full-cycle recruiter with 6+ years of experience across technical recruiting, HR business partnering, and talent acquisition strategy.

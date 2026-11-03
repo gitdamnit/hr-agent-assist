@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [Unreleased]
+
+### Fixed
+- Docker image build — Vite client build now resolves correctly inside the container (`npm run build` in the builder stage); image builds and passes `GET /api/health`
+- README project-structure path and Docker usage instructions
+
 ## [1.0.0] - 2025-05-13
 
 ### Added
@@ -29,4 +35,4 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Auth: express-session with PG store
 
 ### Known Issues
-- Docker build requires further debugging — Vite module resolution issue in containerized environment
+- None outstanding. The Docker build issue noted in an earlier revision of this file is resolved (see `[Unreleased]`).
