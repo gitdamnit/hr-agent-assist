@@ -17,11 +17,11 @@ Released
 
 ## Verification Evidence
 
-- **Verification:** commit `PENDING` — `npm test` green, 19/19 integration tests against the real route handlers — evidence: test output in this session
-- **Verification:** commit `PENDING` — `npm run check` (TypeScript) completed with no errors — evidence: command output
-- **Verification:** commit `PENDING` — `npm run build` produced `dist/public` and `dist/index.cjs` — evidence: build output
-- **Verification:** commit `PENDING` — Docker image built successfully (exit 0) — evidence: `/tmp/opencode/docker-final.log`
-- **Verification:** commit `PENDING` — running container answered `GET /api/health` with `200` — evidence: `curl` output
+- **Verification:** commit `e4ba160` — `npm test` green, 19/19 integration tests against the real route handlers — evidence: test output in this session
+- **Verification:** commit `e4ba160` — `npm run check` (TypeScript) completed with no errors — evidence: command output
+- **Verification:** commit `e4ba160` — `npm run build` produced `dist/public` and `dist/index.cjs` — evidence: build output
+- **Verification:** commit `e4ba160` — Docker image built successfully (exit 0) — evidence: `/tmp/opencode/docker-final.log`
+- **Verification:** commit `e4ba160` — running container answered `GET /api/health` with `200` — evidence: `curl` output
 
 ## Completed Work
 
