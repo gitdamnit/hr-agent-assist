@@ -142,9 +142,9 @@ hr-agent-assist/
 
 ## Status
 
-**v1.0.0 — scope locked.** This repository is a portfolio prototype and is not
-under active feature development. Correctness fixes and documentation changes are
-welcome; new channels or capabilities would be a separate project.
+**Complete prototype — scope closed.** Built from idea to working implementation
+as a portfolio project. It is not deployed and not under active development.
+Correctness fixes and documentation changes are welcome.
 
 See [`PROJECT_STATUS.md`](PROJECT_STATUS.md) for what is verified and
 [`PRODUCT_REQUIREMENTS.md`](PRODUCT_REQUIREMENTS.md) for the acceptance criteria.

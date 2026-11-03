@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-Released
+Prototype
 
 ## Repository State
 
@@ -10,9 +10,9 @@ Released
 <!-- prodoc:observed:start -->
 <!-- Observed from Git metadata only, by `prodoc update`. This block is not evidence that the implementation or its tests are correct; record that under `## Verification Evidence`. -->
 - **Observed branch:** master
-- **Observed commit:** 12b6d176da715e22e5374d21acea2f65e4b5995d
-- **Observed working tree:** clean
-- **Observed at:** 2026-11-03T05:36:00Z
+- **Observed commit:** 2c9acab790b58b5819b73bf45cb65f03144b201d
+- **Observed working tree:** dirty
+- **Observed at:** 2026-11-03T05:49:28Z
 <!-- prodoc:observed:end -->
 
 ## Verification Evidence
@@ -58,14 +58,15 @@ Released
 
 ## Blockers
 
-None. The project is closed for v1.0.
+None. The project is closed as a prototype.
 
 ## Next Actions
 
-1. Nothing required for release.
+1. Nothing required — the project is complete as a prototype.
 2. If the project is ever reopened, the first item would be password hashing
    (Argon2) — recorded above as a known defect, not a planned feature.
 
 ## Release Status
 
-v1.0.0, ready to publish. GitHub release/tag is created outside this repository.
+Complete as a showcase prototype. Not deployed to production; no release
+artifacts are published.

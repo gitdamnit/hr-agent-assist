@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.0.0] - 2026-11-02
 
-Scope locked. This release makes the implementation and the documentation agree.
+Prototype complete. This pass makes the implementation and the documentation agree.
 
 ### Added
 
@@ -45,5 +45,5 @@ Scope locked. This release makes the implementation and the documentation agree.
 
 ## [0.9.0] - 2025-05-13
 
-Pre-release build: role-aware RAG chat, streaming responses, document upload and
+Earlier build: role-aware RAG chat, streaming responses, document upload and
 chunking, session auth, Docker configuration, and the OpenAI-compatible endpoint.

@@ -53,11 +53,11 @@ without pretending to be a compliance product.
 
 ## Scope and Exclusions
 
-**In scope for v1.0:** role-aware RAG chat, citations in the prompt, streaming,
+**In scope:** role-aware RAG chat, citations in the prompt, streaming,
 per-user conversation history, session auth, knowledge-base upload and search,
 OpenAI-compatible API, Docker deployment, integration tests.
 
-**Out of scope for v1.0:** anything not listed above.
+**Out of scope:** anything not listed above.
 
 ## Technical Constraints
 
@@ -68,7 +68,7 @@ OpenAI-compatible API, Docker deployment, integration tests.
 
 ## Acceptance Criteria
 
-v1.0 is complete when, at the release commit:
+The prototype is complete when, at the final commit:
 
 1. `npm run check`, `npm test` and `npm run build` pass.
 2. The Docker image builds and `GET /api/health` answers inside the container.
@@ -77,6 +77,6 @@ v1.0 is complete when, at the release commit:
 
 ## Release Objectives
 
-Ship a scope-locked v1.0.0 that can be showcased as a finished prototype: honest
-documentation, green tests against real handlers, working container, and a clear
-statement of what was intentionally left out.
+Not applicable — this is a completed prototype, not a release. The goal was a
+scope-locked, showcaseable implementation: honest documentation, green tests
+against real handlers, a working container, and no claims the code cannot back up.
