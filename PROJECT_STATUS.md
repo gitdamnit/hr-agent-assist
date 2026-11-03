@@ -9,10 +9,10 @@ Released
 <!-- Machine-maintained by `prodoc update`. Do not hand-edit. -->
 <!-- prodoc:observed:start -->
 <!-- Observed from Git metadata only, by `prodoc update`. This block is not evidence that the implementation or its tests are correct; record that under `## Verification Evidence`. -->
-- **Observed branch:** -
-- **Observed commit:** -
-- **Observed working tree:** unknown
-- **Observed at:** -
+- **Observed branch:** master
+- **Observed commit:** 12b6d176da715e22e5374d21acea2f65e4b5995d
+- **Observed working tree:** clean
+- **Observed at:** 2026-11-03T05:36:00Z
 <!-- prodoc:observed:end -->
 
 ## Verification Evidence
