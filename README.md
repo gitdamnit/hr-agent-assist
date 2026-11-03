@@ -18,8 +18,8 @@ useless in an HR context. HR Agent Assist retrieves the relevant passages from
 documents you upload, shows where the answer came from, and changes the depth of
 the answer depending on who is asking.
 
-It is a **finished prototype**, not a compliance product. The scope is locked and
-documented below, including what it deliberately does not do.
+It is a **finished prototype**, not a compliance product. The scope is locked: what
+is described below is what it does.
 
 ## What it does
 
@@ -28,23 +28,9 @@ documented below, including what it deliberately does not do.
 - **Streaming chat** — SSE responses, persisted conversation history, auto-titling.
 - **Real per-user isolation** — every conversation is owned by a user; another user gets `404`, not someone else's data.
 - **Session auth** — register/login/logout with hashed passwords and server-side sessions.
-- **OpenAI-compatible API** — `POST /api/chat/completions` (bearer `API_KEY`) for Slack/Teams/email integrations.
+- **OpenAI-compatible API** — `POST /api/chat/completions` (bearer `API_KEY`) for external integrations.
 - **One-command deployment** — Docker Compose brings up the app and PostgreSQL, with a `/api/health` check.
 - **Keyboard shortcuts** — Enter/Ctrl+Enter to send, Shift+Enter for a new line, ↑/↓ for message history.
-
-## What it deliberately does not do
-
-These were considered and excluded from v1.0. They are not "coming soon" — they
-are out of scope, and the README will not pretend otherwise.
-
-| Not built | Why it was excluded |
-| --- | --- |
-| Slack / Teams / Telegram / WhatsApp / email channels | Each is an integration project; the OpenAI-compatible endpoint is the seam they would use. |
-| Tool execution (open ticket, create document, route to HR) | Real safety and audit surface. The system prompt describes the behaviour; the code does not execute actions. |
-| Case memory and organisation memory | Needs retention policy and admin curation; not appropriate for a prototype. |
-| Admin console, SSO, multi-tenancy | A permissions product on its own. |
-| Vector embeddings | Deliberate choice of transparent keyword retrieval ([D-0001](DECISION_LOG.md)). |
-| Legal advice | The product gives cited general guidance and escalates high-risk topics. |
 
 ## Architecture
 

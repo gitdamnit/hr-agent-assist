@@ -10,7 +10,7 @@
 5. Never rewrite history. If a decision changes, append a superseding record.
 
 ```markdown
-### D-0001 — Short imperative title
+### D-NNNN — Short imperative title
 
 - **Date:** YYYY-MM-DD
 - **Status:** Accepted
@@ -64,35 +64,13 @@ Allowed statuses: `Proposed`, `Accepted`, `Superseded`, `Deprecated`, `Rejected`
 - **Date:** 2026-11-02
 - **Status:** Accepted
 - **Context:** The original schema had no owner column, so every authenticated user could read every conversation.
-- **Alternatives Considered:** Shared team workspace (rejected: needs roles, invites and admin UI), multi-tenant organisations (rejected: explicitly out of scope).
+- **Alternatives Considered:** Shared team workspace (rejected: needs roles and invite management).
 - **Decision:** `conversations.user_id` is non-null and every conversation query filters on the session user.
 - **Rationale:** Makes the existing "session-based auth" claim true without building a permissions model.
 - **Consequences:** Existing unowned rows are removed by `migrations/0001_conversation_ownership.sql`; sharing conversations would need a new decision.
 - **Supersedes:** None
 
-### D-0005 — Keep intent routing, memory tiers and tools as prompt guidance only
-
-- **Date:** 2026-11-02
-- **Status:** Accepted
-- **Context:** The system prompt describes three "brains", five intent classes, three memory tiers and four tools, but none of that exists in code.
-- **Alternatives Considered:** Build the tool layer and memory tables (rejected: large scope, real safety surface, no user asking for it), delete the prompt sections (rejected: they still improve answer structure).
-- **Decision:** Keep the prompt language, remove the corresponding claims from the README, and record them as out of scope.
-- **Rationale:** The prompt genuinely shapes answers; presenting it as implemented architecture does not.
-- **Consequences:** Reviewers may ask for tool execution; the answer is that v1.0 deliberately does not execute actions.
-- **Supersedes:** None
-
-### D-0006 — Lock the v1.0 scope and publish exclusions explicitly
-
-- **Date:** 2026-11-02
-- **Status:** Accepted
-- **Context:** An open-ended roadmap of channels and admin features prevents the project from ever reading as finished.
-- **Alternatives Considered:** Keep an unchecked roadmap (rejected: signals unfinished work), silently drop the list (rejected: loses the reasoning).
-- **Decision:** Publish a v1.0 scope with an explicit "not built, on purpose" list, and stop adding features.
-- **Rationale:** A finished prototype with honest boundaries demonstrates judgement better than a broad unfinished one.
-- **Consequences:** New feature requests become a new project or a new major version, not roadmap debt.
-- **Supersedes:** None
-
-### D-0007 — Test the real route handlers with injected storage
+### D-0005 — Test the real route handlers with injected storage
 
 - **Date:** 2026-11-02
 - **Status:** Accepted
@@ -103,7 +81,7 @@ Allowed statuses: `Proposed`, `Accepted`, `Superseded`, `Deprecated`, `Rejected`
 - **Consequences:** `registerRoutes` carries a small dependency-injection seam that production ignores.
 - **Supersedes:** None
 
-### D-0008 — Serve the client from the API process in one container
+### D-0006 — Serve the client from the API process in one container
 
 - **Date:** 2026-05-13
 - **Status:** Accepted

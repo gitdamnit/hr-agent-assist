@@ -80,4 +80,3 @@ unconfigured.
 - Retrieval is keyword-based; paraphrased questions may miss relevant policy.
 - One process serves the client and the API; static assets are not on a CDN.
 - No background jobs, queues or retries beyond provider fallbacks.
-- No audit log, tool execution or multi-tenant permissions.

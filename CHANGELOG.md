@@ -22,8 +22,7 @@ Scope locked. This release makes the implementation and the documentation agree.
 
 ### Changed
 
-- README rewritten around verified behaviour, with an explicit "not built, on
-  purpose" scope instead of an open-ended roadmap.
+- README rewritten around verified behaviour.
 - `registerRoutes` accepts optional `storage` and `getProvider` dependencies so
   tests can run the real handlers.
 - All conversation, document and search routes require a session; the
@@ -42,9 +41,7 @@ Scope locked. This release makes the implementation and the documentation agree.
 
 ### Removed
 
-- The multi-channel/admin roadmap list, case and organisation memory claims, and
-  the "three brains / intent routing" architecture claims. The prompt still
-  guides answer structure, but the code no longer pretends those subsystems exist.
+- Stale roadmap items and unimplemented architecture claims from the README.
 
 ## [0.9.0] - 2025-05-13
 

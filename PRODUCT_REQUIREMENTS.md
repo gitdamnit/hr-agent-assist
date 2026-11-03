@@ -57,13 +57,7 @@ without pretending to be a compliance product.
 per-user conversation history, session auth, knowledge-base upload and search,
 OpenAI-compatible API, Docker deployment, integration tests.
 
-**Explicitly out of scope (deliberate, not pending):**
-- Slack, Teams, Telegram, WhatsApp and email channels
-- Tool execution (ticket creation, document generation) and audit logging
-- Case memory and organisation-curated memory
-- Admin console, multi-tenancy, SSO
-- Vector embeddings (PostgreSQL full-text search is the chosen retrieval method)
-- Legal advice of any kind
+**Out of scope for v1.0:** anything not listed above.
 
 ## Technical Constraints
 

@@ -35,7 +35,7 @@ Released
 - [Implemented] Dockerfile and Compose deployment with healthcheck — `Dockerfile`, `docker-compose.yml`
 - [Tested] 19 integration tests importing the real `registerRoutes` — `server/api.test.ts`
 - [Removed] Unauthenticated duplicate conversation route and dead health payload — `server/routes.ts`
-- [Removed] Stale multi-channel roadmap and unimplemented architecture claims — `README.md`, `CHANGELOG.md`
+- [Removed] Stale roadmap and unimplemented architecture claims — `README.md`, `CHANGELOG.md`
 
 ## Tests
 
@@ -64,7 +64,7 @@ None. The project is closed for v1.0.
 
 1. Nothing required for release.
 2. If the project is ever reopened, the first item would be password hashing
-   (Argon2) — recorded above as a known defect, not a roadmap promise.
+   (Argon2) — recorded above as a known defect, not a planned feature.
 
 ## Release Status
 
