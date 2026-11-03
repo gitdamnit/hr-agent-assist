@@ -1,38 +1,52 @@
 # Changelog
 
-All notable changes to this project will be documented in this file.
+All notable changes to this project are documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.0.0] - 2026-11-02
 
-### Fixed
-- Docker image build — Vite client build now resolves correctly inside the container (`npm run build` in the builder stage); image builds and passes `GET /api/health`
-- README project-structure path and Docker usage instructions
-
-## [1.0.0] - 2025-05-13
+Scope locked. This release makes the implementation and the documentation agree.
 
 ### Added
-- Initial release of HR Agent Assist
-- **Auth**: Session-based register/login with PostgreSQL-backed sessions
-- **Role-aware AI responses**: Employee, Manager, HR Professional modes
-- **Knowledge base (RAG)**: Upload PDF, DOCX, ODT, TXT, MD, HTML, CSV — cited in every answer
-- **Streaming chat**: Real-time SSE responses with full conversation history
-- **Three-brains architecture**: Company Policy Brain, Legal Baseline Brain, Tools Brain
-- **Intent routing**: Classifies questions as Policy Q, Legal Baseline Q, Action Request, Personal Case, or Unknown
-- **Three-tier memory**: Session, case (persistent), and organizational memory
-- **Dark/light mode**: System preference with manual toggle
-- **OpenAI-compatible API**: `POST /api/chat/completions` for external integrations
-- **Keyboard shortcuts**: `Ctrl+Enter` to send, `↑`/`↓` for message history
-- **Health endpoint**: Shows active provider and model info
 
-### Tech Stack
-- Frontend: React, Tailwind CSS, Shadcn UI, Wouter, TanStack Query
-- Backend: Node.js, Express 5
-- Database: PostgreSQL (Drizzle ORM)
-- AI: OpenAI-compatible provider (configurable, defaults to OpenCode Go)
-- Document parsing: pdf-parse, Mammoth, JSZip
-- Auth: express-session with PG store
+- `GET /api/health` — reports status, version, provider and model, and stays
+  healthy with `llm: "unconfigured"` when no key is set.
+- `GET /api/search?q=` — ranked knowledge-base chunks with their source titles.
+- Per-user conversation ownership (`conversations.user_id`) with a migration;
+  a second user now receives `404` instead of another user's data.
+- Message-history keyboard navigation (↑/↓) and Ctrl/Cmd+Enter to send.
+- `docs/ARCHITECTURE.md` — components, request flow, data model, limits.
+- `PRODUCT_REQUIREMENTS.md`, `DECISION_LOG.md`, `PROJECT_STATUS.md`.
 
-### Known Issues
-- None outstanding. The Docker build issue noted in an earlier revision of this file is resolved (see `[Unreleased]`).
+### Changed
+
+- README rewritten around verified behaviour, with an explicit "not built, on
+  purpose" scope instead of an open-ended roadmap.
+- `registerRoutes` accepts optional `storage` and `getProvider` dependencies so
+  tests can run the real handlers.
+- All conversation, document and search routes require a session; the
+  OpenAI-compatible endpoint keeps its separate `API_KEY`.
+
+### Fixed
+
+- Removed a duplicate, unauthenticated `GET /api/conversations` registration that
+  shadowed the protected one and exposed every user's conversations.
+- Removed the health payload that had been pasted into the conversations route;
+  the Docker/compose healthcheck now hits a route that exists.
+- Replaced the test suite, which re-implemented every route locally and could not
+  fail, with 19 integration tests against the shipped handlers.
+- Corrected the project-structure path and the stale Docker "known issue"; the
+  image builds and the health endpoint answers.
+
+### Removed
+
+- The multi-channel/admin roadmap list, case and organisation memory claims, and
+  the "three brains / intent routing" architecture claims. The prompt still
+  guides answer structure, but the code no longer pretends those subsystems exist.
+
+## [0.9.0] - 2025-05-13
+
+Pre-release build: role-aware RAG chat, streaming responses, document upload and
+chunking, session auth, Docker configuration, and the OpenAI-compatible endpoint.

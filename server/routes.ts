@@ -1,6 +1,6 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
-import { storage } from "./storage";
+import { storage as defaultStorage, type IStorage } from "./storage";
 import { extractTextFromFile, chunkText } from "./docParser";
 import { getAIProvider } from "./ai/registry";
 import { requireApiKey, requireSession, type SessionUser } from "./auth";
@@ -131,22 +131,63 @@ ${knowledgeSection}
 TONE: Professional, calm, direct. Do not be overly chatty. Be explicit about uncertainty.`;
 }
 
-export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
+export interface RouteDeps {
+  storage?: IStorage;
+  getProvider?: typeof getAIProvider;
+}
+
+function userIdOf(req: Request): string {
+  return (req.session as { userId?: string }).userId as string;
+}
+
+export async function registerRoutes(
+  httpServer: Server,
+  app: Express,
+  deps: RouteDeps = {},
+): Promise<Server> {
+  const storage = deps.storage ?? defaultStorage;
+  const getProvider = deps.getProvider ?? getAIProvider;
+
+  // ── Health ────────────────────────────────────────────────────────────────
+
+  app.get("/api/health", (_req, res) => {
+    try {
+      const provider = getProvider();
+      res.json({
+        status: "ok",
+        version: "1.0.0",
+        provider: provider.providerName,
+        model: provider.defaultModel,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (e) {
+      // The server is up; the LLM is simply not configured yet.
+      res.json({
+        status: "ok",
+        version: "1.0.0",
+        provider: null,
+        model: null,
+        llm: "unconfigured",
+        detail: (e as Error).message,
+        timestamp: new Date().toISOString(),
+      });
+    }
+  });
 
   // ── Conversations ─────────────────────────────────────────────────────────
 
-  app.get("/api/conversations", async (_req, res) => {
+  app.get("/api/conversations", requireSession, async (req, res) => {
     try {
-      res.json(await storage.getAllConversations());
+      res.json(await storage.getAllConversations(userIdOf(req)));
     } catch (e) {
       res.status(500).json({ error: "Failed to fetch conversations" });
     }
   });
 
-  app.get("/api/conversations/:id", async (req, res) => {
+  app.get("/api/conversations/:id", requireSession, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
-      const conv = await storage.getConversation(id);
+      const id = parseInt(String(req.params.id), 10);
+      const conv = await storage.getConversation(id, userIdOf(req));
       if (!conv) return res.status(404).json({ error: "Not found" });
       const msgs = await storage.getMessagesByConversation(id);
       res.json({ ...conv, messages: msgs });
@@ -155,29 +196,37 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  app.post("/api/conversations", async (req, res) => {
+  app.post("/api/conversations", requireSession, async (req, res) => {
     try {
       const { title, sessionData } = req.body;
-      const conv = await storage.createConversation(title || "New Conversation", sessionData || {});
+      const conv = await storage.createConversation(
+        userIdOf(req),
+        title || "New Conversation",
+        sessionData || {},
+      );
       res.status(201).json(conv);
     } catch (e) {
       res.status(500).json({ error: "Failed to create conversation" });
     }
   });
 
-  app.patch("/api/conversations/:id", async (req, res) => {
+  app.patch("/api/conversations/:id", requireSession, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
-      const conv = await storage.updateConversation(id, req.body);
+      const id = parseInt(String(req.params.id), 10);
+      const conv = await storage.updateConversation(id, userIdOf(req), req.body);
+      if (!conv) return res.status(404).json({ error: "Not found" });
       res.json(conv);
     } catch (e) {
       res.status(500).json({ error: "Failed to update conversation" });
     }
   });
 
-  app.delete("/api/conversations/:id", async (req, res) => {
+  app.delete("/api/conversations/:id", requireSession, async (req, res) => {
     try {
-      await storage.deleteConversation(parseInt(req.params.id));
+      const id = parseInt(String(req.params.id), 10);
+      const conv = await storage.getConversation(id, userIdOf(req));
+      if (!conv) return res.status(404).json({ error: "Not found" });
+      await storage.deleteConversation(id, userIdOf(req));
       res.status(204).send();
     } catch (e) {
       res.status(500).json({ error: "Failed to delete conversation" });
@@ -186,14 +235,15 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   // ── Messages (streaming) ──────────────────────────────────────────────────
 
-  app.post("/api/conversations/:id/messages", async (req, res) => {
+  app.post("/api/conversations/:id/messages", requireSession, async (req, res) => {
     try {
-      const conversationId = parseInt(req.params.id);
+      const conversationId = parseInt(String(req.params.id), 10);
       const { content } = req.body;
 
       if (!content?.trim()) return res.status(400).json({ error: "Content required" });
 
-      const conversation = await storage.getConversation(conversationId);
+      const conversation = await storage.getConversation(conversationId, userIdOf(req));
+      if (!conversation) return res.status(404).json({ error: "Not found" });
       const role = (conversation?.sessionData as any)?.role;
 
       // RAG: search knowledge base for relevant chunks
@@ -223,7 +273,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       }));
 
       // Get AI provider and build system prompt with model info
-      const provider = getAIProvider();
+      const provider = getProvider();
       const modelInfo = `${provider.providerName} / ${provider.defaultModel}`;
 
       // SSE headers
@@ -253,7 +303,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       if (conversation && conversation.title === "New Conversation") {
         const words = content.trim().split(" ").slice(0, 7).join(" ");
         const title = words.length > 45 ? words.slice(0, 45) + "…" : words;
-        await storage.updateConversation(conversationId, { title });
+        await storage.updateConversation(conversationId, userIdOf(req), { title });
       }
 
       res.write(`data: ${JSON.stringify({ done: true, messageId: assistantMsg.id })}\n\n`);
@@ -342,26 +392,16 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  // ── Conversations ─────────────────────────────────────────────────────────
+  // ── Knowledge base search ────────────────────────────────────────────────
 
-  app.get("/api/conversations", requireSession, async (_req, res) => {
+  app.get("/api/search", requireSession, async (req, res) => {
+    const q = (req.query.q as string | undefined)?.trim();
+    if (!q) return res.status(400).json({ error: "q query param required" });
     try {
-      const provider = getAIProvider();
-      res.json({
-        status: "ok",
-        version: "1.0.0",
-        provider: provider.providerName,
-        model: provider.defaultModel,
-        baseUrl: provider.baseUrl,
-        timestamp: new Date().toISOString(),
-      });
+      const chunks = await storage.searchChunks(q, 5);
+      res.json({ query: q, chunks });
     } catch (e) {
-      res.status(503).json({
-        status: "error",
-        version: "1.0.0",
-        error: (e as Error).message,
-        timestamp: new Date().toISOString(),
-      });
+      res.status(500).json({ error: "Search failed" });
     }
   });
 
@@ -369,7 +409,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.get("/api/models", async (_req, res) => {
     try {
-      const provider = getAIProvider();
+      const provider = getProvider();
       const models = await provider.listModels();
       res.json({
         provider: provider.providerName,
@@ -392,7 +432,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         return res.status(400).json({ error: "messages array is required" });
       }
 
-      const provider = getAIProvider();
+      const provider = getProvider();
       const modelInfo = `${provider.providerName} / ${provider.defaultModel}`;
 
       // Extract user's last message for RAG
@@ -504,7 +544,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   // ── Documents ─────────────────────────────────────────────────────────────
 
-  app.get("/api/documents", async (_req, res) => {
+  app.get("/api/documents", requireSession, async (_req, res) => {
     try {
       res.json(await storage.getAllDocuments());
     } catch (e) {
@@ -512,9 +552,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  app.delete("/api/documents/:id", async (req, res) => {
+  app.delete("/api/documents/:id", requireSession, async (req, res) => {
     try {
-      await storage.deleteDocument(parseInt(req.params.id));
+      await storage.deleteDocument(parseInt(String(req.params.id), 10));
       res.status(204).send();
     } catch (e) {
       res.status(500).json({ error: "Failed to delete document" });
@@ -523,6 +563,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.post(
     "/api/documents/upload",
+    requireSession,
     upload.array("files", 20),
     async (req: Request, res: Response) => {
       const files = req.files as Express.Multer.File[];

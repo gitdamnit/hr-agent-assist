@@ -5,7 +5,7 @@ import type {
   Document, InsertDocument, DocumentChunk, InsertDocumentChunk,
   User, InsertUser,
 } from "@shared/schema";
-import { eq, desc, sql } from "drizzle-orm";
+import { and, eq, desc, sql } from "drizzle-orm";
 import { users } from "@shared/schema";
 
 export interface IStorage {
@@ -13,11 +13,11 @@ export interface IStorage {
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
 
-  getAllConversations(): Promise<Conversation[]>;
-  getConversation(id: number): Promise<Conversation | undefined>;
-  createConversation(title: string, sessionData?: object): Promise<Conversation>;
-  updateConversation(id: number, data: Partial<InsertConversation>): Promise<Conversation>;
-  deleteConversation(id: number): Promise<void>;
+  getAllConversations(userId: string): Promise<Conversation[]>;
+  getConversation(id: number, userId: string): Promise<Conversation | undefined>;
+  createConversation(userId: string, title: string, sessionData?: object): Promise<Conversation>;
+  updateConversation(id: number, userId: string, data: Partial<InsertConversation>): Promise<Conversation | undefined>;
+  deleteConversation(id: number, userId: string): Promise<void>;
 
   getMessagesByConversation(conversationId: number): Promise<Message[]>;
   createMessage(data: InsertMessage): Promise<Message>;
@@ -46,23 +46,30 @@ export class DbStorage implements IStorage {
     return user;
   }
 
-  async getAllConversations() {
-    return db.select().from(conversations).orderBy(desc(conversations.updatedAt));
+  async getAllConversations(userId: string) {
+    return db.select().from(conversations)
+      .where(eq(conversations.userId, userId))
+      .orderBy(desc(conversations.updatedAt));
   }
-  async getConversation(id: number) {
-    const [conv] = await db.select().from(conversations).where(eq(conversations.id, id));
+  async getConversation(id: number, userId: string) {
+    const [conv] = await db.select().from(conversations)
+      .where(and(eq(conversations.id, id), eq(conversations.userId, userId)));
     return conv;
   }
-  async createConversation(title: string, sessionData: object = {}) {
-    const [conv] = await db.insert(conversations).values({ title, sessionData }).returning();
+  async createConversation(userId: string, title: string, sessionData: object = {}) {
+    const [conv] = await db.insert(conversations).values({ userId, title, sessionData }).returning();
     return conv;
   }
-  async updateConversation(id: number, data: Partial<InsertConversation>) {
-    const [conv] = await db.update(conversations).set({ ...data, updatedAt: new Date() }).where(eq(conversations.id, id)).returning();
+  async updateConversation(id: number, userId: string, data: Partial<InsertConversation>) {
+    const [conv] = await db.update(conversations)
+      .set({ ...data, updatedAt: new Date() })
+      .where(and(eq(conversations.id, id), eq(conversations.userId, userId)))
+      .returning();
     return conv;
   }
-  async deleteConversation(id: number) {
-    await db.delete(conversations).where(eq(conversations.id, id));
+  async deleteConversation(id: number, userId: string) {
+    await db.delete(conversations)
+      .where(and(eq(conversations.id, id), eq(conversations.userId, userId)));
   }
 
   async getMessagesByConversation(conversationId: number) {
