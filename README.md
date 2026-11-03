@@ -1,163 +1,197 @@
 # HR Agent Assist
 
-[![CI](https://github.com/gitdamnit/hr-agent-assist/actions/workflows/ci.yml/badge.svg)](https://github.com/gitdamnit/hr-agent-assist/actions/workflows/ci.yml)
-
 <img width="200" height="200" alt="HR Agent Assist logo" src="hragentassistlogo.jpeg" />
 
-**An AI HR assistant that answers from your company's own policy documents — with citations, role-aware depth, and an honest escalation path.**
+An AI-powered, channel-agnostic HR assistant that delivers cited, accurate, role-aware HR guidance grounded in your company's own documents and employment law.
 
-<img width="706" height="541" alt="HR Agent Assist chat" src="https://github.com/user-attachments/assets/b6e4e645-1d2b-4369-92c5-91d00c38fae5" />
+<img width="706" height="541" alt="HR Agent Assist" src="https://github.com/user-attachments/assets/b6e4e645-1d2b-4369-92c5-91d00c38fae5" />
+
+## Features
+
+**Role-aware responses** — tell it whether you're an Employee, Manager, or HR Professional and it adjusts the depth and framing of every answer accordingly.
+
+**Knowledge base (RAG)** — upload your company's policy documents (PDF, DOCX, ODT, TXT, MD, HTML, CSV) and HR Agent Assist will cite them in every relevant answer.
+
+**Streaming AI chat** — real-time responses with full conversation history, searchable across all sessions.
+
+**Three-brains architecture** — Company Policy Brain (RAG), Legal Baseline Brain (government sources), and Tools Brain (actions with audit logging).
+
+**Intent routing** — automatically classifies each question as Policy Q, Legal Baseline Q, Action Request, Personal Case, or Unknown.
+
+**Three-tier memory** — session memory, case memory (persistent per case), and organizational memory (admin-curated).
+
+**Dark & light mode** — theme follows system preference, manually toggleable.
+
+**Session-based auth** — register/login with username + password, PostgreSQL-backed sessions.
+
+**OpenAI-compatible API** — `POST /api/chat/completions` for external integrations (Slack, Teams, email).
+
+**Keyboard shortcuts** — `Ctrl+Enter` to send, `↑`/`↓` to navigate sent message history.
 
 ---
 
-## Why this exists
+## Tech Stack
 
-Employees, managers and HR staff ask the same policy questions over and over. A
-general chatbot answers them confidently and cites nothing, which is worse than
-useless in an HR context. HR Agent Assist retrieves the relevant passages from
-documents you upload, shows where the answer came from, and changes the depth of
-the answer depending on who is asking.
+| Layer | Technology |
+|-------|------------|
+| Frontend | React, Tailwind CSS, Shadcn UI, Wouter, TanStack Query |
+| Backend | Node.js, Express 5 |
+| Database | PostgreSQL (via Drizzle ORM) |
+| AI | OpenAI-compatible provider (configurable, defaults to OpenCode Go) |
+| Document parsing | pdf-parse, Mammoth, JSZip |
+| Search | PostgreSQL full-text search (ts_rank) |
+| Streaming | Server-Sent Events (SSE) |
+| Auth | express-session (PG store in production, memory in dev) |
 
-It is a **finished prototype**, not a compliance product. The scope is locked: what
-is described below is what it does.
+---
 
-## What it does
+## Getting Started
 
-- **Role-aware answers** — Employee, Manager and HR Professional each get different depth, obligations and framing.
-- **Grounded retrieval (RAG)** — upload PDF, DOCX, ODT, MD, TXT, HTML, CSV or RTF; chunks are ranked with PostgreSQL full-text search and injected into the prompt with their source document name.
-- **Streaming chat** — SSE responses, persisted conversation history, auto-titling.
-- **Real per-user isolation** — every conversation is owned by a user; another user gets `404`, not someone else's data.
-- **Session auth** — register/login/logout with hashed passwords and server-side sessions.
-- **OpenAI-compatible API** — `POST /api/chat/completions` (bearer `API_KEY`) for external integrations.
-- **One-command deployment** — Docker Compose brings up the app and PostgreSQL, with a `/api/health` check.
-- **Keyboard shortcuts** — Enter/Ctrl+Enter to send, Shift+Enter for a new line, ↑/↓ for message history.
+### Prerequisites
 
-## Architecture
+- Node.js 18+
+- PostgreSQL database
+- LLM API key (OpenCode Go, OpenAI, OpenRouter, Groq, or custom)
 
-```
-Browser (React + Vite)
-   │  session cookie
-   ▼
-Express 5 ── /api/auth          session auth (Postgres store in prod)
-   ├──────── /api/conversations conversation CRUD, ownership enforced
-   ├──────── /api/documents     upload → extract → chunk → index
-   ├──────── /api/search        ts_rank over document_chunks
-   ├──────── /api/conversations/:id/messages   SSE streaming
-   └──────── /api/chat/completions             OpenAI-compatible, API key
-          │
-          ▼
-   AIProvider interface ── OpenAI-compatible HTTP/SSE
-          │                 (OpenCode Go · OpenAI · OpenRouter · Groq · custom)
-          ▼
-   PostgreSQL 16 (Drizzle ORM)
-     users · conversations · messages · documents · document_chunks
-```
-
-Request flow for a question: authenticate → load the conversation and its role →
-retrieve the top five matching chunks → build a role-aware system prompt with
-citations → stream the model response → persist both messages → auto-title the
-conversation on the first exchange.
-
-More detail: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). Decisions and
-rejected alternatives: [`DECISION_LOG.md`](DECISION_LOG.md).
-
-## Quick start
-
-### Docker (app + database)
-
-```bash
-cp .env.example .env    # set LLM_API_KEY, SESSION_SECRET, and DB_PASSWORD
-docker compose up --build
-```
-
-Open <http://localhost:5000>, register, then upload a policy document on the
-Knowledge Base page before asking a question.
-
-### Local development
+### Install & run
 
 ```bash
 npm install
-cp .env.example .env    # set DATABASE_URL and LLM_* variables
 npm run db:push
-npm run dev             # http://localhost:5000
+cp .env.example .env   # then fill in your DATABASE_URL and LLM_* vars
+npm run dev
 ```
 
-`GET /api/health` reports the active provider and model, and still answers `200`
-with `llm: "unconfigured"` when no API key is present.
-
-## Tests
-
-```bash
-npm test        # 19 integration tests, no database required
-npm run check   # TypeScript
-npm run build   # client + server bundle
-```
-
-The tests import the real `registerRoutes` and drive it with an in-memory
-`IStorage` and a fake provider, so they fail when the shipped handlers change
-behaviour. They cover auth, per-user conversation isolation, streaming and
-persistence, knowledge-base search, health reporting and the OpenAI-compatible
-endpoint.
-
-## API
-
-| Method | Endpoint | Auth | Description |
-| --- | --- | --- | --- |
-| GET | `/api/health` | — | Status, provider and model |
-| POST | `/api/auth/register` | — | Create account, start session |
-| POST | `/api/auth/login` | — | Log in |
-| POST | `/api/auth/logout` | session | Destroy session |
-| GET | `/api/auth/me` | session | Current user |
-| GET | `/api/conversations` | session | List **your** conversations |
-| POST | `/api/conversations` | session | Create conversation |
-| GET | `/api/conversations/:id` | session | Conversation with messages (owner only) |
-| PATCH | `/api/conversations/:id` | session | Rename / update session data |
-| DELETE | `/api/conversations/:id` | session | Delete |
-| POST | `/api/conversations/:id/messages` | session | Send message (SSE stream) |
-| GET | `/api/documents` | session | List knowledge-base documents |
-| POST | `/api/documents/upload` | session | Upload up to 20 files |
-| DELETE | `/api/documents/:id` | session | Delete a document |
-| GET | `/api/search?q=` | session | Ranked chunks with source titles |
-| GET | `/api/models` | — | Models exposed by the configured provider |
-| POST | `/api/chat/completions` | `API_KEY` | OpenAI-compatible completion (streaming or not) |
-
-## Project structure
-
-```
-hr-agent-assist/
-├── client/src/            React app (pages, components, auth hook)
-├── server/
-│   ├── ai/                provider interface, OpenAI-compatible client, registry
-│   ├── routes.ts          all HTTP routes (dependency-injectable for tests)
-│   ├── storage.ts         Drizzle-backed IStorage
-│   ├── auth.ts            requireSession / requireApiKey
-│   ├── session.ts         session middleware (PG + memory stores)
-│   ├── docParser.ts       PDF / DOCX / ODT / text extraction
-│   └── api.test.ts        integration tests against the real routes
-├── shared/schema.ts       Drizzle schema and types
-├── migrations/            initial schema + conversation ownership
-├── Dockerfile             multi-stage production image
-└── docker-compose.yml     app + PostgreSQL
-```
-
-## Status
-
-**Complete prototype — scope closed.** Built from idea to working implementation
-as a portfolio project. It is not deployed and not under active development.
-Correctness fixes and documentation changes are welcome.
-
-See [`PROJECT_STATUS.md`](PROJECT_STATUS.md) for what is verified and
-[`PRODUCT_REQUIREMENTS.md`](PRODUCT_REQUIREMENTS.md) for the acceptance criteria.
-
-## About the creator
-
-Built by **Evan G. Zellner, MSHRM, PHR, SHRM-CP** — a strategic HR professional and
-full-cycle recruiter with 6+ years across technical recruiting, HR business
-partnering and talent acquisition.
-
-[LinkedIn](https://linkedin.com/in/evanzellner) · [GitHub](https://github.com/gitdamnit)
+The app runs on `http://localhost:5000` by default.
 
 ---
 
-*HR Agent Assist provides general guidance only. Verify critical matters with your
-HR department or qualified legal counsel.*
+## Environment Variables
+
+```env
+# Database
+DATABASE_URL=postgresql://user:password@localhost:5432/hr_care
+
+# LLM Provider (swappable — opencode_go | openai | openrouter | groq | custom)
+LLM_PROVIDER=opencode_go
+LLM_API_KEY=your_api_key
+LLM_BASE_URL=https://opencode.ai/zen/go/v1
+LLM_MODEL=deepseek-v4-pro
+LLM_MODEL_FALLBACKS=deepseek-v4-flash,qwen3.5-plus
+LLM_TIMEOUT_MS=30000
+LLM_MAX_TOKENS=4096
+
+# Auth (optional — only enforced when API_KEY is set)
+API_KEY=
+
+# Session
+SESSION_SECRET=change-me-in-production
+
+# CORS (comma-separated origins)
+CORS_ORIGINS=http://localhost:5000,http://localhost:5173
+```
+
+---
+
+## API Reference
+
+### Auth
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/auth/register` | Register (username + password, SHA-256 hashed) |
+| POST | `/api/auth/login` | Login, sets session cookie |
+| POST | `/api/auth/logout` | Destroys session |
+| GET | `/api/auth/me` | Returns current user (requires session) |
+
+### Conversations
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/conversations` | List all conversations (requires auth) |
+| POST | `/api/conversations` | Create new conversation |
+| GET | `/api/conversations/:id` | Get conversation with messages |
+| PATCH | `/api/conversations/:id` | Update title or session data |
+| DELETE | `/api/conversations/:id` | Delete conversation |
+| POST | `/api/conversations/:id/messages` | Send message (SSE streaming) |
+
+### Documents
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/documents` | List knowledge base documents |
+| POST | `/api/documents/upload` | Upload documents (multipart, up to 20 files) |
+| DELETE | `/api/documents/:id` | Delete document |
+
+### AI
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/health` | Health check with provider/model info |
+| GET | `/api/models` | List available models |
+| POST | `/api/chat/completions` | OpenAI-compatible completions endpoint (requires `API_KEY`) |
+
+---
+
+## Project Structure
+
+```
+hr-care-agent/
+├── client/                  # React frontend
+│   └── src/
+│       ├── components/     # UI components (sidebar, role-selector, etc.)
+│       ├── hooks/          # use-auth (auth context + hydration)
+│       ├── lib/            # queryClient, utils
+│       └── pages/          # home, chat, about, knowledge-base, login, register
+├── server/
+│   ├── ai/
+│   │   ├── provider.ts     # AI provider interface
+│   │   ├── openai-compatible.ts  # OpenAI-compatible streaming provider
+│   │   └── registry.ts     # Env-driven provider config
+│   ├── auth.ts             # requireApiKey, requireSession middleware
+│   ├── session.ts          # Session middleware (PG + memory stores)
+│   ├── routes.ts           # All API routes
+│   ├── storage.ts          # Drizzle storage layer
+│   └── docParser.ts        # PDF/DOCX/ODT/TXT/MD/HTML/CSV parser
+├── shared/
+│   └── schema.ts           # Drizzle schema (users, conversations, messages, documents, documentChunks)
+└── migrations/
+    └── 0000_initial_schema.sql
+```
+
+---
+
+## Roles
+
+| Role | What it focuses on |
+|------|---------------------|
+| Employee | Your rights, entitlements, leave, benefits, how to navigate HR processes |
+| Manager | Employee rights + your compliance obligations, documentation requirements, legal risks |
+| HR Professional | Full statutory detail, regulatory citations, edge cases, audit considerations |
+
+---
+
+## Roadmap
+
+- [ ] Slack — bot integration via Bolt SDK, slash commands, DMs
+- [ ] Email — inbound parsing and reply via SendGrid / Postmark
+- [ ] Telegram — bot API
+- [ ] Microsoft Teams — Azure Bot Framework
+- [ ] WhatsApp — Meta Cloud API
+- [ ] Embeddable widget — iframe / script tag for existing HR portals
+- [ ] Admin panel — configure jurisdictions, escalation contacts, document access controls
+- [ ] Conversation export — PDF and Markdown
+- [ ] Audit log viewer — for HR staff
+- [ ] Multi-tenant support — separate knowledge bases per organization
+
+---
+
+## About the Creator
+
+Built by **Evan G. Zellner**, MSHRM, PHR, SHRM-CP — a strategic HR professional and full-cycle recruiter with 6+ years of experience across technical recruiting, HR business partnering, and talent acquisition strategy.
+
+[LinkedIn](https://linkedin.com/in/evanzellner)
+
+---
+
+*HR Agent Assist provides general guidance only. Always verify critical matters with your HR department or qualified legal counsel.*

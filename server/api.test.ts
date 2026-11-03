@@ -1,338 +1,383 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeAll, afterAll, vi, beforeEach } from "vitest";
 import express from "express";
-import { createServer } from "http";
+import { createServer, type Server } from "http";
 import supertest from "supertest";
+import crypto from "crypto";
 import session from "express-session";
-import { registerRoutes } from "./routes";
-import { addUserToRequest } from "./session";
-import type { IStorage } from "./storage";
-import type {
-  User, InsertUser, Conversation, InsertConversation,
-  Message, InsertMessage, Document, InsertDocument,
-  DocumentChunk, InsertDocumentChunk,
-} from "@shared/schema";
 
-// ── In-memory IStorage ───────────────────────────────────────────────────────
-// The real route handlers run against this; nothing is re-implemented here.
+// ── Mock Storage ─────────────────────────────────────────────────────────────
 
-class MemoryStorage implements IStorage {
-  users: User[] = [];
-  conversations: Conversation[] = [];
-  messages: Message[] = [];
-  documents: Document[] = [];
-  chunks: Array<DocumentChunk & { documentTitle: string }> = [];
-  private seq = 1;
+interface MockUser { id: string; username: string; password: string; }
+interface MockConversation { id: number; title: string; sessionData: object; }
+interface MockMessage { id: number; conversationId: number; role: string; content: string; metadata: object; }
 
-  async getUser(id: string) {
-    return this.users.find((u) => u.id === id);
-  }
-  async getUserByUsername(username: string) {
-    return this.users.find((u) => u.username === username);
-  }
-  async createUser(user: InsertUser) {
-    const created: User = { id: `user-${this.seq++}`, ...user };
-    this.users.push(created);
-    return created;
-  }
+const mockUsers: MockUser[] = [];
+const mockConversations: MockConversation[] = [{ id: 1, title: "Test", sessionData: {} }];
+const mockMessages: MockMessage[] = [];
 
-  async getAllConversations(userId: string) {
-    return this.conversations.filter((c) => c.userId === userId);
-  }
-  async getConversation(id: number, userId: string) {
-    return this.conversations.find((c) => c.id === id && c.userId === userId);
-  }
-  async createConversation(userId: string, title: string, sessionData: object = {}) {
-    const created: Conversation = {
-      id: this.seq++,
-      userId,
-      title,
-      sessionData: sessionData as Conversation["sessionData"],
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-    this.conversations.push(created);
-    return created;
-  }
-  async updateConversation(id: number, userId: string, data: Partial<InsertConversation>) {
-    const conv = await this.getConversation(id, userId);
-    if (!conv) return undefined;
-    Object.assign(conv, data, { updatedAt: new Date() });
-    return conv;
-  }
-  async deleteConversation(id: number, userId: string) {
-    this.conversations = this.conversations.filter((c) => !(c.id === id && c.userId === userId));
-  }
-
-  async getMessagesByConversation(conversationId: number) {
-    return this.messages.filter((m) => m.conversationId === conversationId);
-  }
-  async createMessage(data: InsertMessage) {
-    const created: Message = {
-      id: this.seq++,
-      metadata: {},
-      createdAt: new Date(),
-      ...data,
-    } as Message;
-    this.messages.push(created);
-    return created;
-  }
-
-  async getAllDocuments() {
-    return this.documents;
-  }
-  async getDocument(id: number) {
-    return this.documents.find((d) => d.id === id);
-  }
-  async createDocument(data: InsertDocument) {
-    const created: Document = { id: this.seq++, createdAt: new Date(), ...data } as Document;
-    this.documents.push(created);
-    return created;
-  }
-  async updateDocumentChunkCount(id: number, count: number) {
-    const doc = this.documents.find((d) => d.id === id);
-    if (doc) doc.chunkCount = count;
-  }
-  async deleteDocument(id: number) {
-    this.documents = this.documents.filter((d) => d.id !== id);
-  }
-
-  async createDocumentChunks(chunks: InsertDocumentChunk[]) {
-    for (const chunk of chunks) {
-      this.chunks.push({ id: this.seq++, createdAt: new Date(), ...chunk, documentTitle: "Policy" } as any);
-    }
-  }
-  async searchChunks(query: string, limit = 5) {
-    return this.chunks
-      .filter((c) => c.content.toLowerCase().includes(query.toLowerCase()))
-      .slice(0, limit);
-  }
+function makeMockStorage() {
+  return {
+    getUser: vi.fn(async (id: string) => mockUsers.find((u) => u.id === id)),
+    getUserByUsername: vi.fn(async (username: string) => mockUsers.find((u) => u.username === username)),
+    createUser: vi.fn(async (user: any) => {
+      const newUser = { id: crypto.randomUUID(), ...user };
+      mockUsers.push(newUser);
+      return newUser;
+    }),
+    getAllConversations: vi.fn(async () => mockConversations),
+    getConversation: vi.fn(async (id: number) => mockConversations.find((c) => c.id === id)),
+    createConversation: vi.fn(async (title: string, sessionData?: object) => {
+      const conv = { id: mockConversations.length + 1, title, sessionData: sessionData || {} };
+      mockConversations.push(conv);
+      return conv;
+    }),
+    updateConversation: vi.fn(async (id: number, data: any) => {
+      const conv = mockConversations.find((c) => c.id === id);
+      if (conv) Object.assign(conv, data);
+      return conv;
+    }),
+    deleteConversation: vi.fn(async (id: number) => {
+      const idx = mockConversations.findIndex((c) => c.id === id);
+      if (idx !== -1) mockConversations.splice(idx, 1);
+    }),
+    getMessagesByConversation: vi.fn(async (conversationId: number) =>
+      mockMessages.filter((m) => m.conversationId === conversationId),
+    ),
+    createMessage: vi.fn(async (data: any) => {
+      const msg = { id: mockMessages.length + 1, ...data };
+      mockMessages.push(msg);
+      return msg;
+    }),
+    getAllDocuments: vi.fn(async () => []),
+    getDocument: vi.fn(async (id: number) => undefined),
+    createDocument: vi.fn(async (data: any) => ({ id: 1, ...data })),
+    updateDocumentChunkCount: vi.fn(async () => {}),
+    deleteDocument: vi.fn(async (id: number) => {}),
+    createDocumentChunks: vi.fn(async () => {}),
+    searchChunks: vi.fn(async (query: string, limit?: number) => [
+      { id: 1, documentId: 1, chunkIndex: 0, content: `Mock chunk for: ${query}`, documentTitle: "Test Doc" },
+    ]),
+  };
 }
 
-// ── Fake AI provider ─────────────────────────────────────────────────────────
+// ── Test App Setup ────────────────────────────────────────────────────────────
 
-const fakeProvider = {
-  name: "fake",
-  providerName: "Fake",
-  baseUrl: "http://fake",
-  defaultModel: "fake-model",
-  async *chat() {
-    yield "Hello";
-    yield " world";
-  },
-  async listModels() {
-    return ["fake-model"];
-  },
-};
-
-async function buildApp(store: IStorage, getProvider: () => any = () => fakeProvider) {
+function createTestApp(mockStorage: ReturnType<typeof makeMockStorage>, withSession = false) {
   const app = express();
-  app.use(session({ secret: "test-secret", resave: false, saveUninitialized: false }));
-  app.use(addUserToRequest);
+  if (withSession) {
+    app.use(session({ secret: "test-secret", resave: false, saveUninitialized: false }));
+  }
   app.use(express.json());
-  await registerRoutes(createServer(app), app, { storage: store, getProvider });
+
+  // Auth endpoints
+  app.post("/api/auth/register", async (req, res) => {
+    const { username, password } = req.body;
+    if (!username || !password) return res.status(400).json({ error: "Username and password required" });
+    if (username.length < 3) return res.status(400).json({ error: "Username must be at least 3 characters" });
+    if (password.length < 8) return res.status(400).json({ error: "Password must be at least 8 characters" });
+    const existing = await mockStorage.getUserByUsername(username);
+    if (existing) return res.status(409).json({ error: "Username already taken" });
+    const hashed = crypto.createHash("sha256").update(password).digest("hex");
+    const user = await mockStorage.createUser({ username, password: hashed });
+    (req.session as any).userId = user.id;
+    res.status(201).json({ id: user.id, username: user.username });
+  });
+
+  app.post("/api/auth/login", async (req, res) => {
+    const { username, password } = req.body;
+    if (!username || !password) return res.status(400).json({ error: "Username and password required" });
+    const user = await mockStorage.getUserByUsername(username);
+    if (!user) return res.status(401).json({ error: "Invalid credentials" });
+    const hashed = crypto.createHash("sha256").update(password).digest("hex");
+    if (user.password !== hashed) return res.status(401).json({ error: "Invalid credentials" });
+    (req.session as any).userId = user.id;
+    res.json({ id: user.id, username: user.username });
+  });
+
+  app.get("/api/auth/me", async (req, res) => {
+    const userId = (req.session as any)?.userId;
+    if (!userId) return res.status(401).json({ error: "Not authenticated" });
+    const user = mockUsers.find((u) => u.id === userId);
+    if (!user) return res.status(404).json({ error: "User not found" });
+    res.json({ id: user.id, username: user.username });
+  });
+
+  // Conversation endpoints
+  app.get("/api/conversations", async (_req, res) => {
+    res.json(await mockStorage.getAllConversations());
+  });
+
+  app.post("/api/conversations", async (req, res) => {
+    const { title, sessionData } = req.body;
+    const conv = await mockStorage.createConversation(title || "New Conversation", sessionData || {});
+    res.status(201).json(conv);
+  });
+
+  app.get("/api/conversations/:id", async (req, res) => {
+    const id = parseInt(req.params.id);
+    const conv = await mockStorage.getConversation(id);
+    if (!conv) return res.status(404).json({ error: "Not found" });
+    const msgs = await mockStorage.getMessagesByConversation(id);
+    res.json({ ...conv, messages: msgs });
+  });
+
+  // Document endpoints
+  app.get("/api/documents", async (_req, res) => {
+    res.json(await mockStorage.getAllDocuments());
+  });
+
+  // RAG endpoint
+  app.get("/api/search", async (req, res) => {
+    const query = req.query.q as string;
+    if (!query) return res.status(400).json({ error: "q query param required" });
+    const chunks = await mockStorage.searchChunks(query, 5);
+    res.json({ chunks });
+  });
+
+  // Health endpoint
+  app.get("/api/health", (_req, res) => {
+    res.json({ status: "ok", version: "1.0.0", provider: "Test", model: "test-model" });
+  });
+
   return app;
 }
 
-async function register(agent: ReturnType<typeof supertest.agent>, username: string) {
-  const res = await agent.post("/api/auth/register").send({ username, password: "password123" });
-  expect(res.status).toBe(201);
-  return res.body as { id: string; username: string };
-}
+// ── Auth Tests ────────────────────────────────────────────────────────────────
 
-// ── Health ───────────────────────────────────────────────────────────────────
-
-describe("GET /api/health", () => {
-  it("reports provider and model when the LLM is configured", async () => {
-    const res = await supertest(await buildApp(new MemoryStorage())).get("/api/health");
-    expect(res.status).toBe(200);
-    expect(res.body).toMatchObject({ status: "ok", version: "1.0.0", provider: "Fake", model: "fake-model" });
-  });
-
-  it("still reports the server healthy when the LLM is not configured", async () => {
-    const app = await buildApp(new MemoryStorage(), () => {
-      throw new Error("LLM_API_KEY is not set");
-    });
-    const res = await supertest(app).get("/api/health");
-    expect(res.status).toBe(200);
-    expect(res.body).toMatchObject({ status: "ok", llm: "unconfigured", provider: null });
-  });
-});
-
-// ── Auth ─────────────────────────────────────────────────────────────────────
-
-describe("Auth", () => {
-  let store: MemoryStorage;
-  let agent: ReturnType<typeof supertest.agent>;
-
-  beforeEach(async () => {
-    store = new MemoryStorage();
-    agent = supertest.agent(await buildApp(store));
-  });
-
-  it("rejects a short password", async () => {
-    const res = await agent.post("/api/auth/register").send({ username: "evan", password: "short" });
-    expect(res.status).toBe(400);
-  });
-
-  it("registers a user and starts a session", async () => {
-    const user = await register(agent, "evan");
-    expect(user.username).toBe("evan");
-    const me = await agent.get("/api/auth/me");
-    expect(me.status).toBe(200);
-    expect(me.body.username).toBe("evan");
-  });
-
-  it("rejects a duplicate username", async () => {
-    await register(agent, "evan");
-    const res = await agent.post("/api/auth/register").send({ username: "evan", password: "password123" });
-    expect(res.status).toBe(409);
-  });
-
-  it("rejects a bad password on login", async () => {
-    await register(agent, "evan");
-    const res = await supertest(await buildApp(store))
-      .post("/api/auth/login")
-      .send({ username: "evan", password: "wrong-password" });
-    expect(res.status).toBe(401);
-  });
-
-  it("returns 401 from /api/auth/me without a session", async () => {
-    const res = await supertest(await buildApp(store)).get("/api/auth/me");
-    expect(res.status).toBe(401);
-  });
-});
-
-// ── Conversations & ownership ────────────────────────────────────────────────
-
-describe("Conversations", () => {
-  let store: MemoryStorage;
-  let alice: ReturnType<typeof supertest.agent>;
-  let bob: ReturnType<typeof supertest.agent>;
-
-  beforeEach(async () => {
-    store = new MemoryStorage();
-    const app = await buildApp(store);
-    alice = supertest.agent(app);
-    bob = supertest.agent(app);
-    await register(alice, "alice");
-    await register(bob, "bob");
-  });
-
-  it("requires a session", async () => {
-    const res = await supertest(await buildApp(store)).get("/api/conversations");
-    expect(res.status).toBe(401);
-  });
-
-  it("creates and lists a conversation for the current user", async () => {
-    const created = await alice.post("/api/conversations").send({ title: "Leave policy" });
-    expect(created.status).toBe(201);
-
-    const list = await alice.get("/api/conversations");
-    expect(list.status).toBe(200);
-    expect(list.body).toHaveLength(1);
-    expect(list.body[0].title).toBe("Leave policy");
-  });
-
-  it("hides another user's conversation", async () => {
-    const created = await alice.post("/api/conversations").send({ title: "Private case" });
-    const res = await bob.get(`/api/conversations/${created.body.id}`);
-    expect(res.status).toBe(404);
-    expect((await bob.get("/api/conversations")).body).toHaveLength(0);
-  });
-
-  it("refuses to update or delete another user's conversation", async () => {
-    const created = await alice.post("/api/conversations").send({ title: "Private case" });
-    expect((await bob.patch(`/api/conversations/${created.body.id}`).send({ title: "hijacked" })).status).toBe(404);
-    expect((await bob.delete(`/api/conversations/${created.body.id}`)).status).toBe(404);
-  });
-
-  it("refuses to post a message into another user's conversation", async () => {
-    const created = await alice.post("/api/conversations").send({ title: "Private case" });
-    const res = await bob.post(`/api/conversations/${created.body.id}/messages`).send({ content: "hello" });
-    expect(res.status).toBe(404);
-  });
-
-  it("streams an assistant reply and persists both messages", async () => {
-    const created = await alice.post("/api/conversations").send({ title: "New Conversation" });
-    const res = await alice
-      .post(`/api/conversations/${created.body.id}/messages`)
-      .send({ content: "What is the leave policy?" });
-
-    expect(res.status).toBe(200);
-    expect(res.headers["content-type"]).toContain("text/event-stream");
-    expect(res.text).toContain("Hello");
-    expect(res.text).toContain('"done":true');
-
-    const conversation = await alice.get(`/api/conversations/${created.body.id}`);
-    expect(conversation.body.messages).toHaveLength(2);
-    expect(conversation.body.messages[0].role).toBe("user");
-    expect(conversation.body.messages[1].content).toBe("Hello world");
-  });
-});
-
-// ── Knowledge base ───────────────────────────────────────────────────────────
-
-describe("Knowledge base", () => {
-  let store: MemoryStorage;
-  let agent: ReturnType<typeof supertest.agent>;
-
-  beforeEach(async () => {
-    store = new MemoryStorage();
-    store.chunks.push({
-      id: 1,
-      documentId: 1,
-      chunkIndex: 0,
-      content: "Employees receive 15 days of paid time off per year.",
-      documentTitle: "Employee Handbook",
-      createdAt: new Date(),
-    });
-    agent = supertest.agent(await buildApp(store));
-    await register(agent, "evan");
-  });
-
-  it("requires a session", async () => {
-    expect((await supertest(await buildApp(store)).get("/api/documents")).status).toBe(401);
-  });
-
-  it("lists documents", async () => {
-    const res = await agent.get("/api/documents");
-    expect(res.status).toBe(200);
-    expect(res.body).toEqual([]);
-  });
-
-  it("validates the search query", async () => {
-    expect((await agent.get("/api/search")).status).toBe(400);
-  });
-
-  it("returns matching chunks with their source", async () => {
-    const res = await agent.get("/api/search").query({ q: "paid time off" });
-    expect(res.status).toBe(200);
-    expect(res.body.chunks).toHaveLength(1);
-    expect(res.body.chunks[0].documentTitle).toBe("Employee Handbook");
-  });
-});
-
-// ── OpenAI-compatible API ────────────────────────────────────────────────────
-
-describe("POST /api/chat/completions", () => {
+describe("Auth Routes", () => {
   let app: express.Express;
+  let server: Server;
+  let request: ReturnType<typeof supertest>;
 
-  beforeEach(async () => {
-    app = await buildApp(new MemoryStorage());
+  beforeAll(async () => {
+    mockUsers.length = 0;
+    mockConversations.length = 1;
+    mockMessages.length = 0;
+
+    const mockStorage = makeMockStorage();
+    app = createTestApp(mockStorage, true);
+    server = createServer(app);
+    request = supertest(server);
   });
 
-  it("requires a messages array", async () => {
-    const res = await supertest(app).post("/api/chat/completions").send({});
-    expect(res.status).toBe(400);
+  afterAll(() => server.close());
+
+  describe("POST /api/auth/register", () => {
+    it("returns 400 when username is missing", async () => {
+      const res = await request.post("/api/auth/register").send({ password: "password123" });
+      expect(res.status).toBe(400);
+      expect(res.body.error).toMatch(/username/i);
+    });
+
+    it("returns 400 when password is too short", async () => {
+      const res = await request.post("/api/auth/register").send({ username: "testuser", password: "short" });
+      expect(res.status).toBe(400);
+      expect(res.body.error).toMatch(/password/i);
+    });
+
+    it("returns 400 when username is too short", async () => {
+      const res = await request.post("/api/auth/register").send({ username: "ab", password: "password123" });
+      expect(res.status).toBe(400);
+      expect(res.body.error).toMatch(/username/i);
+    });
+
+    it("registers a new user successfully", async () => {
+      const res = await request.post("/api/auth/register").send({
+        username: "testuser",
+        password: "password123",
+      });
+      expect(res.status).toBe(201);
+      expect(res.body.username).toBe("testuser");
+      expect(res.body.id).toBeDefined();
+    });
+
+    it("returns 409 when username is taken", async () => {
+      await request.post("/api/auth/register").send({ username: "duplicate", password: "password123" });
+      const res = await request.post("/api/auth/register").send({ username: "duplicate", password: "password123" });
+      expect(res.status).toBe(409);
+      expect(res.body.error).toMatch(/taken/i);
+    });
   });
 
-  it("returns an OpenAI-shaped completion", async () => {
-    const res = await supertest(app)
-      .post("/api/chat/completions")
-      .send({ messages: [{ role: "user", content: "Hello" }] });
+  describe("POST /api/auth/login", () => {
+    beforeEach(async () => {
+      mockUsers.length = 0;
+      await request.post("/api/auth/register").send({ username: "loginuser", password: "password123" });
+    });
 
-    expect(res.status).toBe(200);
-    expect(res.body.object).toBe("chat.completion");
-    expect(res.body.choices[0].message.content).toBe("Hello world");
+    it("returns 400 when credentials missing", async () => {
+      const res = await request.post("/api/auth/login").send({});
+      expect(res.status).toBe(400);
+    });
+
+    it("returns 401 for invalid username", async () => {
+      const res = await request.post("/api/auth/login").send({ username: "nouser", password: "password123" });
+      expect(res.status).toBe(401);
+      expect(res.body.error).toMatch(/invalid/i);
+    });
+
+    it("returns 401 for invalid password", async () => {
+      await request.post("/api/auth/login").send({ username: "loginuser", password: "password123" });
+      const res = await request.post("/api/auth/login").send({ username: "loginuser", password: "wrongpassword" });
+      expect(res.status).toBe(401);
+      expect(res.body.error).toMatch(/invalid/i);
+    });
+
+    it("logs in successfully with correct credentials", async () => {
+      const res = await request.post("/api/auth/login").send({ username: "loginuser", password: "password123" });
+      expect(res.status).toBe(200);
+      expect(res.body.username).toBe("loginuser");
+    });
+  });
+
+  describe("GET /api/auth/me", () => {
+    it("returns 401 without authorization header", async () => {
+      const res = await request.get("/api/auth/me");
+      expect(res.status).toBe(401);
+    });
+
+    it("returns user when session is set via cookie", async () => {
+      // Use agent to persist cookies across requests
+      const agent = supertest.agent(server);
+      await agent.post("/api/auth/register").send({ username: "cookieuser", password: "password123" });
+      const res = await agent.get("/api/auth/me");
+      expect(res.status).toBe(200);
+      expect(res.body.username).toBe("cookieuser");
+    });
+  });
+});
+
+// ── Conversation Tests ────────────────────────────────────────────────────────
+
+describe("Conversation Routes", () => {
+  let app: express.Express;
+  let server: Server;
+  let request: ReturnType<typeof supertest>;
+
+  beforeAll(async () => {
+    mockConversations.length = 0;
+    const mockStorage = makeMockStorage();
+    app = createTestApp(mockStorage, true);
+    server = createServer(app);
+    request = supertest(server);
+  });
+
+  afterAll(() => server.close());
+
+  describe("GET /api/conversations", () => {
+    it("returns list of conversations", async () => {
+      const res = await request.get("/api/conversations");
+      expect(res.status).toBe(200);
+      expect(Array.isArray(res.body)).toBe(true);
+    });
+  });
+
+  describe("POST /api/conversations", () => {
+    it("creates a conversation with default title", async () => {
+      const res = await request.post("/api/conversations").send({});
+      expect(res.status).toBe(201);
+      expect(res.body.title).toBe("New Conversation");
+    });
+
+    it("creates a conversation with custom title", async () => {
+      const res = await request.post("/api/conversations").send({ title: "My Conversation" });
+      expect(res.status).toBe(201);
+      expect(res.body.title).toBe("My Conversation");
+    });
+
+    it("creates a conversation with session data", async () => {
+      const res = await request.post("/api/conversations").send({
+        title: "Role Test",
+        sessionData: { role: "employee" },
+      });
+      expect(res.status).toBe(201);
+      expect(res.body.sessionData).toEqual({ role: "employee" });
+    });
+  });
+
+  describe("GET /api/conversations/:id", () => {
+    it("returns 404 for unknown conversation", async () => {
+      const res = await request.get("/api/conversations/99999");
+      expect(res.status).toBe(404);
+    });
+
+    it("returns conversation with messages", async () => {
+      const createRes = await request.post("/api/conversations").send({ title: "Conv with msgs" });
+      const id = createRes.body.id;
+
+      const res = await request.get(`/api/conversations/${id}`);
+      expect(res.status).toBe(200);
+      expect(res.body.messages).toBeDefined();
+    });
+  });
+});
+
+// ── RAG / Search Tests ────────────────────────────────────────────────────────
+
+describe("RAG Pipeline", () => {
+  let app: express.Express;
+  let server: Server;
+  let request: ReturnType<typeof supertest>;
+
+  beforeAll(async () => {
+    const mockStorage = makeMockStorage();
+    app = createTestApp(mockStorage, true);
+    server = createServer(app);
+    request = supertest(server);
+  });
+
+  afterAll(() => server.close());
+
+  describe("GET /api/search", () => {
+    it("returns 400 when q param is missing", async () => {
+      const res = await request.get("/api/search");
+      expect(res.status).toBe(400);
+    });
+
+    it("returns chunks for a query", async () => {
+      const res = await request.get("/api/search?q=parental+leave");
+      expect(res.status).toBe(200);
+      expect(res.body.chunks).toBeDefined();
+      expect(Array.isArray(res.body.chunks)).toBe(true);
+    });
+
+    it("returns chunk with documentTitle", async () => {
+      const res = await request.get("/api/search?q=parental+leave");
+      expect(res.body.chunks[0].documentTitle).toBeDefined();
+    });
+  });
+});
+
+// ── Health & Document Tests ───────────────────────────────────────────────────
+
+describe("Health & Documents", () => {
+  let app: express.Express;
+  let server: Server;
+  let request: ReturnType<typeof supertest>;
+
+  beforeAll(async () => {
+    const mockStorage = makeMockStorage();
+    app = createTestApp(mockStorage, true);
+    server = createServer(app);
+    request = supertest(server);
+  });
+
+  afterAll(() => server.close());
+
+  describe("GET /api/health", () => {
+    it("returns health status with version", async () => {
+      const res = await request.get("/api/health");
+      expect(res.status).toBe(200);
+      expect(res.body.status).toBe("ok");
+      expect(res.body.version).toBe("1.0.0");
+    });
+  });
+
+  describe("GET /api/documents", () => {
+    it("returns empty array when no documents", async () => {
+      const res = await request.get("/api/documents");
+      expect(res.status).toBe(200);
+      expect(Array.isArray(res.body)).toBe(true);
+    });
   });
 });

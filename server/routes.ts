@@ -1,6 +1,6 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
-import { storage as defaultStorage, type IStorage } from "./storage";
+import { storage } from "./storage";
 import { extractTextFromFile, chunkText } from "./docParser";
 import { getAIProvider } from "./ai/registry";
 import { requireApiKey, requireSession, type SessionUser } from "./auth";
@@ -28,16 +28,58 @@ CURRENT USER ROLE: HR Professional
 Tailor your response for an HR professional who needs the full compliance picture. Include: precise statutory/regulatory references, policy implementation details, edge cases, documentation requirements, record retention obligations, risk flags, and recommended escalation paths. Use professional HR terminology. Do not oversimplify.`,
 };
 
-const SOURCES = `
-SOURCES AND PRIORITIES:
+const THREE_BRAINS = `
+SYSTEM ARCHITECTURE — You operate with three "brains":
 
-1) COMPANY POLICY (primary):
-Grounded in uploaded company documents. Cite the document title and section/heading or page. Distinguish company policy from legal minimums. If nothing relevant is found, say "Not found in current company documents" and suggest next steps.
+A) COMPANY POLICY BRAIN (RAG — primary):
+Grounded in uploaded company documents. Each answer must cite: document title, section/heading or page, and link/ID when available. Distinguish clearly between company policy and legal minimums. If no relevant document is found, say "Not found in current company documents" and propose next steps.
 
-2) LEGAL BASELINE (secondary):
-Jurisdiction-specific minimums from authoritative government sources — labor departments, EEOC/OSHA equivalents, official statutes. Include publication or update dates where available. Clearly distinguish law from company policy and recommend HR/legal review for high-risk topics.
+B) LEGAL BASELINE BRAIN (government sources — secondary):
+Used for jurisdiction-specific legal minimums. Prefer authoritative sources: federal/state labor departments, OSHA/EEOC equivalents, official statutes/regulations portals. Include publication/updated date. Clearly distinguish law vs company policy. Recommend HR/legal review for high-risk topics.
 
-You cannot open tickets, create documents, route messages or schedule meetings. Do not claim access to internal systems or tools; tell the user what to do instead.`;
+C) TOOLS BRAIN (actions):
+When a request involves creating a document, opening a ticket, routing to HR, or scheduling — state clearly what you are about to do, what inputs you will use, then execute with audit logging. If a tool fails, provide safe fallback and escalation path.`;
+
+const INTENT_ROUTING = `
+INTENT ROUTING — Classify each request into one of:
+1) Policy Q (company handbook/process/benefits) → retrieve from Company Policy Brain first
+2) Legal baseline Q (minimum legal requirement; jurisdiction-sensitive) → use Legal Brain with citations
+3) Process/action request (create doc, open ticket, route to HR, schedule meeting) → use Tools Brain; log everything
+4) Personal case guidance (needs HR follow-up, sensitive) → handle with extra care, minimal data storage
+5) Unknown/ambiguous → ask minimum clarifying question(s), preferably multiple-choice
+
+Always identify the intent type in your response metadata.`;
+
+const MEMORY_TIERS = `
+MEMORY TIERS — Use three tiers:
+
+1) SESSION MEMORY (short-lived; resets when session ends):
+- User's stated role (employee/manager/HR), jurisdiction, current question thread context
+- Stored automatically from conversation context; do not persist beyond session
+
+2) CASE MEMORY (persistent; per user request; minimal and non-sensitive):
+- Ongoing issues and action items (e.g., "employee asked about parental leave; awaiting HR confirmation")
+- Links to relevant policies already used; decisions made by tools
+- Store only what is needed to continue the workflow
+- NEVER store: medical details, protected-class info, or other sensitive personal data
+- Write a short "memory note" explaining what is stored and why
+
+3) ORGANIZATIONAL MEMORY (persistent; admin-curated only):
+- Canonical links to handbook, policy repository, ticketing endpoints, standard templates
+- Definitions of internal acronyms and teams
+- Editable only by admins, not by random employee chat`;
+
+const TOOLS_DESCRIPTION = `
+AVAILABLE TOOLS:
+- create_google_doc(template_type, parameters) → generates a document from a template
+- open_hr_ticket(category, summary, details, priority) → opens an HR support ticket
+- route_to_hr(contact/team, context) → routes the conversation to the appropriate HR contact
+- log_audit(event_type, user_id, timestamp, sources_used, action_taken) → records an audit trail entry
+
+TOOL RULES:
+- Before calling a tool, restate what you're about to do and what inputs you will use
+- After tool completion, return the result (links/IDs) and log the action
+- If a tool fails, provide a safe fallback and escalation`;
 
 const CITATION_FORMAT = `
 CITATION FORMAT — For every source cited, include:
@@ -59,19 +101,24 @@ function buildSystemPrompt(role?: string, knowledgeContext?: string, modelInfo?:
 
   return `You are "HR Agent Assist", a channel-agnostic HR assistant designed to serve employees and HR staff.${modelLine}
 ${roleSection}
-${SOURCES}
+${THREE_BRAINS}
+${INTENT_ROUTING}
+${MEMORY_TIERS}
+${TOOLS_DESCRIPTION}
 ${CITATION_FORMAT}
 PRIMARY OBJECTIVES
-1) Answer HR questions grounded in company documents (when available), with source citations.
+1) Answer HR questions grounded in company docs (when available), with source citations.
 2) Provide law-aware guidance referencing authoritative government sources when relevant, with citations and effective dates when available.
-3) Be explicit about uncertainty and escalate high-risk topics instead of guessing.
+3) Execute approved tools (document generation, ticket creation, request routing) with audit logging.
+4) Maintain persistent, scoped memory so you don't forget key context within the organization and within a user's ongoing case, while never hallucinating facts.
 
 CORE RULES
 - Never invent policy details. If not found in sources, say "Not found in current sources" and propose next steps.
 - Always provide citations for factual claims. Citations must include: source name/title, section/heading or page if available.
 - Do not provide legal advice. Provide general information with citations and recommend HR/legal review for high-risk topics.
 - High-risk topics (termination, protected leave, accommodations, harassment, discrimination, retaliation, pay disputes, worker classification, safety incidents) require cautious language and an escalation recommendation.
-- If the user's location/jurisdiction matters, ask for it once and use it for the rest of the conversation.
+- If the user's location/jurisdiction matters, ask for it once and remember it for the session.
+- Memory is context, not authority. If memory conflicts with documents, documents win.
 
 OUTPUT FORMAT
 Always produce:
@@ -84,63 +131,22 @@ ${knowledgeSection}
 TONE: Professional, calm, direct. Do not be overly chatty. Be explicit about uncertainty.`;
 }
 
-export interface RouteDeps {
-  storage?: IStorage;
-  getProvider?: typeof getAIProvider;
-}
-
-function userIdOf(req: Request): string {
-  return (req.session as { userId?: string }).userId as string;
-}
-
-export async function registerRoutes(
-  httpServer: Server,
-  app: Express,
-  deps: RouteDeps = {},
-): Promise<Server> {
-  const storage = deps.storage ?? defaultStorage;
-  const getProvider = deps.getProvider ?? getAIProvider;
-
-  // ── Health ────────────────────────────────────────────────────────────────
-
-  app.get("/api/health", (_req, res) => {
-    try {
-      const provider = getProvider();
-      res.json({
-        status: "ok",
-        version: "1.0.0",
-        provider: provider.providerName,
-        model: provider.defaultModel,
-        timestamp: new Date().toISOString(),
-      });
-    } catch (e) {
-      // The server is up; the LLM is simply not configured yet.
-      res.json({
-        status: "ok",
-        version: "1.0.0",
-        provider: null,
-        model: null,
-        llm: "unconfigured",
-        detail: (e as Error).message,
-        timestamp: new Date().toISOString(),
-      });
-    }
-  });
+export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
 
   // ── Conversations ─────────────────────────────────────────────────────────
 
-  app.get("/api/conversations", requireSession, async (req, res) => {
+  app.get("/api/conversations", async (_req, res) => {
     try {
-      res.json(await storage.getAllConversations(userIdOf(req)));
+      res.json(await storage.getAllConversations());
     } catch (e) {
       res.status(500).json({ error: "Failed to fetch conversations" });
     }
   });
 
-  app.get("/api/conversations/:id", requireSession, async (req, res) => {
+  app.get("/api/conversations/:id", async (req, res) => {
     try {
-      const id = parseInt(String(req.params.id), 10);
-      const conv = await storage.getConversation(id, userIdOf(req));
+      const id = parseInt(req.params.id);
+      const conv = await storage.getConversation(id);
       if (!conv) return res.status(404).json({ error: "Not found" });
       const msgs = await storage.getMessagesByConversation(id);
       res.json({ ...conv, messages: msgs });
@@ -149,37 +155,29 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/conversations", requireSession, async (req, res) => {
+  app.post("/api/conversations", async (req, res) => {
     try {
       const { title, sessionData } = req.body;
-      const conv = await storage.createConversation(
-        userIdOf(req),
-        title || "New Conversation",
-        sessionData || {},
-      );
+      const conv = await storage.createConversation(title || "New Conversation", sessionData || {});
       res.status(201).json(conv);
     } catch (e) {
       res.status(500).json({ error: "Failed to create conversation" });
     }
   });
 
-  app.patch("/api/conversations/:id", requireSession, async (req, res) => {
+  app.patch("/api/conversations/:id", async (req, res) => {
     try {
-      const id = parseInt(String(req.params.id), 10);
-      const conv = await storage.updateConversation(id, userIdOf(req), req.body);
-      if (!conv) return res.status(404).json({ error: "Not found" });
+      const id = parseInt(req.params.id);
+      const conv = await storage.updateConversation(id, req.body);
       res.json(conv);
     } catch (e) {
       res.status(500).json({ error: "Failed to update conversation" });
     }
   });
 
-  app.delete("/api/conversations/:id", requireSession, async (req, res) => {
+  app.delete("/api/conversations/:id", async (req, res) => {
     try {
-      const id = parseInt(String(req.params.id), 10);
-      const conv = await storage.getConversation(id, userIdOf(req));
-      if (!conv) return res.status(404).json({ error: "Not found" });
-      await storage.deleteConversation(id, userIdOf(req));
+      await storage.deleteConversation(parseInt(req.params.id));
       res.status(204).send();
     } catch (e) {
       res.status(500).json({ error: "Failed to delete conversation" });
@@ -188,15 +186,14 @@ export async function registerRoutes(
 
   // ── Messages (streaming) ──────────────────────────────────────────────────
 
-  app.post("/api/conversations/:id/messages", requireSession, async (req, res) => {
+  app.post("/api/conversations/:id/messages", async (req, res) => {
     try {
-      const conversationId = parseInt(String(req.params.id), 10);
+      const conversationId = parseInt(req.params.id);
       const { content } = req.body;
 
       if (!content?.trim()) return res.status(400).json({ error: "Content required" });
 
-      const conversation = await storage.getConversation(conversationId, userIdOf(req));
-      if (!conversation) return res.status(404).json({ error: "Not found" });
+      const conversation = await storage.getConversation(conversationId);
       const role = (conversation?.sessionData as any)?.role;
 
       // RAG: search knowledge base for relevant chunks
@@ -226,7 +223,7 @@ export async function registerRoutes(
       }));
 
       // Get AI provider and build system prompt with model info
-      const provider = getProvider();
+      const provider = getAIProvider();
       const modelInfo = `${provider.providerName} / ${provider.defaultModel}`;
 
       // SSE headers
@@ -256,7 +253,7 @@ export async function registerRoutes(
       if (conversation && conversation.title === "New Conversation") {
         const words = content.trim().split(" ").slice(0, 7).join(" ");
         const title = words.length > 45 ? words.slice(0, 45) + "…" : words;
-        await storage.updateConversation(conversationId, userIdOf(req), { title });
+        await storage.updateConversation(conversationId, { title });
       }
 
       res.write(`data: ${JSON.stringify({ done: true, messageId: assistantMsg.id })}\n\n`);
@@ -345,16 +342,26 @@ export async function registerRoutes(
     }
   });
 
-  // ── Knowledge base search ────────────────────────────────────────────────
+  // ── Conversations ─────────────────────────────────────────────────────────
 
-  app.get("/api/search", requireSession, async (req, res) => {
-    const q = (req.query.q as string | undefined)?.trim();
-    if (!q) return res.status(400).json({ error: "q query param required" });
+  app.get("/api/conversations", requireSession, async (_req, res) => {
     try {
-      const chunks = await storage.searchChunks(q, 5);
-      res.json({ query: q, chunks });
+      const provider = getAIProvider();
+      res.json({
+        status: "ok",
+        version: "1.0.0",
+        provider: provider.providerName,
+        model: provider.defaultModel,
+        baseUrl: provider.baseUrl,
+        timestamp: new Date().toISOString(),
+      });
     } catch (e) {
-      res.status(500).json({ error: "Search failed" });
+      res.status(503).json({
+        status: "error",
+        version: "1.0.0",
+        error: (e as Error).message,
+        timestamp: new Date().toISOString(),
+      });
     }
   });
 
@@ -362,7 +369,7 @@ export async function registerRoutes(
 
   app.get("/api/models", async (_req, res) => {
     try {
-      const provider = getProvider();
+      const provider = getAIProvider();
       const models = await provider.listModels();
       res.json({
         provider: provider.providerName,
@@ -385,7 +392,7 @@ export async function registerRoutes(
         return res.status(400).json({ error: "messages array is required" });
       }
 
-      const provider = getProvider();
+      const provider = getAIProvider();
       const modelInfo = `${provider.providerName} / ${provider.defaultModel}`;
 
       // Extract user's last message for RAG
@@ -497,7 +504,7 @@ export async function registerRoutes(
 
   // ── Documents ─────────────────────────────────────────────────────────────
 
-  app.get("/api/documents", requireSession, async (_req, res) => {
+  app.get("/api/documents", async (_req, res) => {
     try {
       res.json(await storage.getAllDocuments());
     } catch (e) {
@@ -505,9 +512,9 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/documents/:id", requireSession, async (req, res) => {
+  app.delete("/api/documents/:id", async (req, res) => {
     try {
-      await storage.deleteDocument(parseInt(String(req.params.id), 10));
+      await storage.deleteDocument(parseInt(req.params.id));
       res.status(204).send();
     } catch (e) {
       res.status(500).json({ error: "Failed to delete document" });
@@ -516,7 +523,6 @@ export async function registerRoutes(
 
   app.post(
     "/api/documents/upload",
-    requireSession,
     upload.array("files", 20),
     async (req: Request, res: Response) => {
       const files = req.files as Express.Multer.File[];

@@ -141,33 +141,10 @@ export default function ChatPage() {
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [sentMessages, setSentMessages] = useState<string[]>([]);
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    // Ctrl/Cmd+Enter or plain Enter sends; Shift+Enter inserts a newline.
-    if (e.key === "Enter" && (e.ctrlKey || e.metaKey || !e.shiftKey)) {
+const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey && !e.metaKey && !e.ctrlKey) {
       e.preventDefault();
       handleSend(input);
-      return;
-    }
-
-    // ↑/↓ walk back through messages you already sent.
-    if (e.key === "ArrowUp" && sentMessages.length > 0 && e.currentTarget.selectionStart === 0) {
-      e.preventDefault();
-      const next = historyIndex === -1 ? sentMessages.length - 1 : Math.max(0, historyIndex - 1);
-      setHistoryIndex(next);
-      setInput(sentMessages[next]);
-      return;
-    }
-
-    if (e.key === "ArrowDown" && historyIndex !== -1) {
-      e.preventDefault();
-      if (historyIndex >= sentMessages.length - 1) {
-        setHistoryIndex(-1);
-        setInput("");
-      } else {
-        const next = historyIndex + 1;
-        setHistoryIndex(next);
-        setInput(sentMessages[next]);
-      }
     }
   };
 
@@ -281,9 +258,6 @@ export default function ChatPage() {
           </Button>
         </div>
         <p className="text-center text-xs text-muted-foreground mt-2 max-w-3xl mx-auto">
-          Enter or Ctrl+Enter to send · Shift+Enter for a new line · ↑/↓ for message history
-        </p>
-        <p className="text-center text-xs text-muted-foreground mt-1 max-w-3xl mx-auto">
           HR Agent Assist provides general guidance. Verify critical matters with your HR department or legal counsel.
         </p>
       </div>

@@ -11,7 +11,6 @@ export const users = pgTable("users", {
 
 export const conversations = pgTable("conversations", {
   id: serial("id").primaryKey(),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   title: text("title").notNull(),
   sessionData: jsonb("session_data").$type<{
     role?: "employee" | "manager" | "hr_professional";
@@ -20,9 +19,7 @@ export const conversations = pgTable("conversations", {
   }>().default({}),
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
   updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
-}, (table) => ({
-  userIdIdx: index("conversations_user_id_idx").on(table.userId),
-}));
+});
 
 export const messages = pgTable("messages", {
   id: serial("id").primaryKey(),

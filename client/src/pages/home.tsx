@@ -19,12 +19,12 @@ const FEATURES = [
   {
     icon: Shield,
     title: "Safe Escalation",
-    description: "High-risk topics get cautious language and a clear recommendation to involve HR or legal.",
+    description: "High-risk topics trigger cautious, cited responses and automatic escalation recommendations.",
   },
   {
     icon: Zap,
-    title: "Knowledge Base",
-    description: "Upload PDF, Word, ODT and text policies; answers search them and cite the source document.",
+    title: "Action Requests",
+    description: "Process HR actions like ticket creation and document routing with full audit logging.",
   },
 ];
 
@@ -54,9 +54,9 @@ export default function HomePage() {
         <h1 className="text-3xl font-bold text-foreground mb-1" data-testid="text-home-title">
           HR Agent Assist
         </h1>
-        <p className="text-xs text-muted-foreground mb-3">Role-aware HR guidance, grounded in your policies</p>
+        <p className="text-xs text-muted-foreground mb-3">HR Compliance and Rights Engine</p>
         <p className="text-muted-foreground text-base leading-relaxed mb-8 max-w-lg">
-          Ask about policy, leave, benefits or workplace process. Answers are grounded in the documents you upload and cite where they came from.
+          A channel-agnostic HR assistant grounded in company policy and employment law. Ask anything — get cited, accurate, safe answers.
         </p>
 
         <Button
